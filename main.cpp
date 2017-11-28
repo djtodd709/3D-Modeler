@@ -104,9 +104,19 @@ float m_amb[4] = {0,0.1f,0,1};
 float m_spe[4] = {0.1f,0.1f,0.1f,1};
 float shiny = 10;
 
+float m_temp[4] = {1.0f,1.0f,1.0f,1}; //Temporary material 
+float no_mat[4] = { 0,0,0,1 }; //Empty material
+
 //viewing angles, used in rotating the scene
 float angle = 0.0f;
 float Vangle = 0.0f;
+
+float camDist;
+float camTwist;
+float camElev;
+float camAzimuth;
+float camX = 0;
+float camZ = 0;
 
 //position of camera and target.
 float camPos[] = {0, 9, 27};	//where the camera is
@@ -227,8 +237,11 @@ void keyboard(unsigned char key, int xIn, int yIn){
 }
 
 //Raycasting - mostly class code 
-//Move to separate file once sure about the inputs/outputs 
+//Move ray logic to separate file once sure about the inputs/outputs 
 //Problem: always drawing from initial camera position
+// -- actually glGetIngererv(GL_VIEWPORT, viewport) get starting position based on actual camera location
+//    BUT current camera movement works based on matrix transforms and camera position is fixed
+
 void rayCast(int x, int y){
     printf("Projecting\n");
 
@@ -254,17 +267,20 @@ void rayCast(int x, int y){
             viewport, &m_end[0], &m_end[1], &m_end[2]);
 
     // now you can create a ray from m_start to m_end
-    printf("(%f,%f,%f)----(%f,%f,%f)\n\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
+    printf("(%f,%f,%f)-->(%f,%f,%f)\n\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
     
 }
 
 //display call for the ray
 void drawRay(){
+    
+    m_temp[0] = 0; m_temp[1] = 1; m_temp[2] = 0;
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp); //Ray should not be affected by lighting
     glBegin(GL_LINES);
-            glColor3f(1,1,1);
             glVertex3f(m_start[0], m_start[1], m_start[2]);
             glVertex3f(m_end[0], m_end[1], m_end[2]);
     glEnd();
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
 }
 
 void mouse(int btn, int state, int x, int y){
@@ -284,6 +300,17 @@ void mouseMotion(int x, int y){
 void mousePassiveMotion(int x, int y){
 }
 
+//Camera movement function
+void orbitView(float dist, float twist, float elev, float azimuth) {
+	glTranslatef(0.0, 0.0, dist);
+	glRotatef(-twist, 0.0, 0.0, 1.0);
+	glRotatef(-elev, 1.0, 0.0, 0.0);
+	glTranslatef(-camX, 0, 0);
+	glTranslatef(0, 0, -camZ);
+	glRotatef(azimuth, 0.0, 1.0, 0.0);
+	//glTranslatef(-(float)gridsize / 2, 0, -(float)gridsize/2);
+}
+
 /* display function - GLUT display callback function
  *		clears the screen, sets the camera position
  */
@@ -296,12 +323,24 @@ void display(void){
 
 	gluLookAt(camPos[X], camPos[Y], camPos[Z], camTarget[X], camTarget[Y], camTarget[Z], 0,1,0);
         
-	glPushMatrix();	//Push base matrix that everything else will be pushed onto
+	if (camDist > 1) {
+		camDist = 1;
+	}
+	if (camElev < -85) {
+		camElev = -85;
+	}
+	else if (camElev > 85) {
+		camElev = 85;
+	}
+	orbitView(camDist, camTwist, camElev, camAzimuth);
         
+	glPushMatrix();	//Push base matrix that everything else will be pushed onto
+                /*
                 //Camera transforms
 		glRotatef(angle, 0, 1, 0);	//make rotations based on angle and Vangle
 		glRotatef(Vangle, 1, 0, 0);	//now all other content in the scene will have these rotations applied
-                
+                */
+        
                 //Call the ray draw function
                 drawRay();
         
@@ -367,17 +406,21 @@ void FPSTimer(int value){
 //function for arrow key handling
 void special(int key, int xIn, int yIn){
 	switch(key){
-		case GLUT_KEY_LEFT:	//Left and right arrow adjust the angle of the scene.
-			angle -= 1.5f;		//This angle variable is used in a rotation around the y
+		case GLUT_KEY_LEFT:	//Left and right arrow adjust the angle of the scene. 
+                        camAzimuth -= 1;
+			//angle -= 1.5f;		//This angle variable is used in a rotation around the y
 			break;						//axis in the display function.
 		case GLUT_KEY_RIGHT:
-			angle += 1.5f;
+                        camAzimuth += 1;
+			//angle += 1.5f;
 			break;
 		case GLUT_KEY_UP:		//Up and down arrow adjust V(ertical)angle, which
-			Vangle += 1.5f;		//again is used in the display function, rotating around x.
+			//Vangle += 1.5f;		//again is used in the display function, rotating around x.
+                        camElev += 1;
 			break;
-		case GLUT_KEY_DOWN:
-			Vangle -= 1.5f;
+		case GLUT_KEY_DOWN:      
+                        camElev -= 1;
+			//Vangle -= 1.5f;
 			break;
 	}
 }
