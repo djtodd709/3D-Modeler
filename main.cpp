@@ -12,6 +12,7 @@
 #  include <GL/gl.h>
 #  include <GL/glu.h>
 #  include <GL/freeglut.h>
+#include <valarray>
 #endif
 
 #define X 0
@@ -111,7 +112,11 @@ float Vangle = 0.0f;
 float camPos[] = {0, 9, 27};	//where the camera is
 float camTarget[] = {0,0,0};
 
-//initial settings for main window. Called (almost) at the begining of the program.
+//Ray vars
+double* m_start = new double[3];
+double* m_end = new double[3];
+
+//initial settings for main window. Called (almost) at the beginning of the program.
 void init(void){
 	glClearColor(0, 0, 0, 0);	//black background
 	glColor3f(1, 1, 1);
@@ -221,6 +226,64 @@ void keyboard(unsigned char key, int xIn, int yIn){
 	}
 }
 
+//Raycasting - mostly class code 
+//Move to separate file once sure about the inputs/outputs 
+//Problem: always drawing from initial camera position
+void rayCast(int x, int y){
+    printf("Projecting\n");
+
+    printf("(%f,%f,%f)-->(%f,%f,%f)\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
+    double matModelView[16], matProjection[16];
+    int viewport[4];
+
+    // get matrix and viewport:
+    glGetDoublev(GL_MODELVIEW_MATRIX, matModelView);
+    glGetDoublev(GL_PROJECTION_MATRIX, matProjection);
+    glGetIntegerv(GL_VIEWPORT, viewport);
+
+    // window pos of mouse, Y is inverted on Windows
+    double winX = (double) x;
+    double winY = viewport[3] - (double) y;
+
+    // get point on the 'near' plane (third param is set to 0.0)
+    gluUnProject(winX, winY, 0.0, matModelView, matProjection,
+            viewport, &m_start[0], &m_start[1], &m_start[2]);
+
+    // get point on the 'far' plane (third param is set to 1.0)
+    gluUnProject(winX, winY, 1.0, matModelView, matProjection,
+            viewport, &m_end[0], &m_end[1], &m_end[2]);
+
+    // now you can create a ray from m_start to m_end
+    printf("(%f,%f,%f)----(%f,%f,%f)\n\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
+    
+}
+
+//display call for the ray
+void drawRay(){
+    glBegin(GL_LINES);
+            glColor3f(1,1,1);
+            glVertex3f(m_start[0], m_start[1], m_start[2]);
+            glVertex3f(m_end[0], m_end[1], m_end[2]);
+    glEnd();
+}
+
+void mouse(int btn, int state, int x, int y){
+    if (btn == GLUT_LEFT_BUTTON){
+        if (state == GLUT_UP){
+        }
+        
+        if (state == GLUT_DOWN){
+            rayCast(x, y);
+        }
+    }
+}
+
+void mouseMotion(int x, int y){
+}
+
+void mousePassiveMotion(int x, int y){
+}
+
 /* display function - GLUT display callback function
  *		clears the screen, sets the camera position
  */
@@ -232,11 +295,16 @@ void display(void){
 	glLoadIdentity();
 
 	gluLookAt(camPos[X], camPos[Y], camPos[Z], camTarget[X], camTarget[Y], camTarget[Z], 0,1,0);
-
+        
 	glPushMatrix();	//Push base matrix that everything else will be pushed onto
+        
+                //Camera transforms
 		glRotatef(angle, 0, 1, 0);	//make rotations based on angle and Vangle
 		glRotatef(Vangle, 1, 0, 0);	//now all other content in the scene will have these rotations applied
-
+                
+                //Call the ray draw function
+                drawRay();
+        
 		glPushMatrix();
 			//set positions of both lights
 			glLightfv(GL_LIGHT0, GL_POSITION, l0pos);
@@ -356,6 +424,11 @@ int main(int argc, char** argv)
 
 	glutDisplayFunc(display);					//registers "display" as the display callback function
 	glutKeyboardFunc(keyboard);				//registers "keyboard" as the keyboard callback function
+	//mouse callbacks
+	glutMouseFunc(mouse);
+	glutMotionFunc(mouseMotion);
+	glutPassiveMotionFunc(mousePassiveMotion);
+        
 	glutTimerFunc(17, FPSTimer, 0);		//registers "FPSTimer" as the timer callback function
 	glutSpecialFunc(special);					//registers "special" as the special callback function
 	glutReshapeFunc(reshape);					//registers "reshape" as the reshape callback function
