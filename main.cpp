@@ -3,6 +3,8 @@
 #include <math.h>
 #include <time.h>
 #include <list>
+#include <iostream>
+#include "mathHelper.h"
 
 #ifdef __APPLE__
 #  include <OpenGL/gl.h>
@@ -24,6 +26,10 @@ using namespace std;
 //Global Variables
 int selectedMaterial = 0;
 
+bool showBounding = false;
+float m_temp[4] = {1.0f,1.0f,1.0f,1}; //Temporary material 
+float no_mat[4] = { 0,0,0,1 }; //Empty material
+
 struct Object{
 	//Transform data
 	float position[3];
@@ -34,6 +40,33 @@ struct Object{
 	//Material data
 	int materialType;
         
+        float* bpvertices[8];
+        int* bpfaces[6];
+        
+        /*
+        //Bounding box
+        float bvertices[24] = {
+            // front
+            -1.0, -1.0,  1.0,
+             1.0, -1.0,  1.0,
+             1.0,  1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            // back
+            -1.0, -1.0, -1.0,
+             1.0, -1.0, -1.0,
+             1.0,  1.0, -1.0,
+            -1.0,  1.0, -1.0,
+        }; 
+         
+       int bfaces[24] = {
+             0, 1, 2, 3,
+             1, 5, 6, 2,
+             0, 1, 5, 4,
+             4, 5, 6, 7,
+             0, 4, 7, 3,
+             3, 2, 6, 7
+        };
+         */
         //Since bounding box rotates, scales, translates, need to keep track of its surfaces as planes
         //Then test ray intersection with individual planes
         //Wonder if there's an easier way than doing it manually?
@@ -43,9 +76,9 @@ struct Object{
         //Then do aabb slab ray intersection, then transform it by the box matrix again
         //WAY easier!
         
-        /*
         void getBoundingBox(){
             double matModelView[16];
+            double invModelView[16];
             glMatrixMode(GL_MODELVIEW);
             glPushMatrix();
                 glLoadIdentity();
@@ -56,8 +89,26 @@ struct Object{
                 glScalef(scale[X],scale[Y],scale[Z]);
                 glGetDoublev(GL_MODELVIEW_MATRIX, matModelView);
             glPopMatrix();
+            
+            //Figure out matrix inverse
+            
+            //Check matrix
+            for(int i=0; i<sizeof(matModelView)/sizeof(matModelView[0]); i++){
+                if (i%4==3)
+                    cout<<matModelView[i]<<"\n";
+                else
+                    cout<<matModelView[i]<<" ";
+            }
+            cout<<"Inverse->\n";
+            gluInvertMatrix(matModelView, invModelView);
+            
+            for(int i=0; i<sizeof(invModelView)/sizeof(invModelView[0]); i++){
+                if (i%4==3)
+                    cout<<invModelView[i]<<"\n";
+                else
+                    cout<<invModelView[i]<<" ";
+            }
         }
-        */
 
 	//method that actually draws the object
 	void draw(){
@@ -83,6 +134,22 @@ struct Object{
 				case 4: glutSolidOctahedron();
 								break;
 			}
+                        if (showBounding && objType != -1 ){
+                            m_temp[0] = 1; m_temp[1] = 0; m_temp[2] = 0;
+                            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
+                            for(int i=0; i<6; i++){
+                                
+                                glBegin(GL_LINE_STRIP);
+                                    glVertex3fv(bpvertices[bpfaces[i][0]]);
+                                    glVertex3fv(bpvertices[bpfaces[i][1]]);
+                                    glVertex3fv(bpvertices[bpfaces[i][2]]);
+                                    glVertex3fv(bpvertices[bpfaces[i][3]]);
+                                    glVertex3fv(bpvertices[bpfaces[i][0]]);
+                                glEnd();
+                                 
+                            }
+                            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
+                        }
 		glPopMatrix();
 	}
 };
@@ -104,6 +171,40 @@ Object MakeObject(int model){
 	o.scale[X] = 1;
 	o.scale[Y] = 1;
 	o.scale[Z] = 1;
+        
+        //Initialize the bounding box
+        //Vertices
+        o.bpvertices[0] = new float[3];
+        o.bpvertices[0][0] = -1.0; o.bpvertices[0][1] = -1.0; o.bpvertices[0][2] = 1.0;
+        o.bpvertices[1] = new float[3];
+        o.bpvertices[1][0] = 1.0; o.bpvertices[1][1] = -1.0; o.bpvertices[1][2] = 1.0;
+        o.bpvertices[2] = new float[3];
+        o.bpvertices[2][0] = 1.0; o.bpvertices[2][1] = 1.0; o.bpvertices[2][2] = 1.0;
+        o.bpvertices[3] = new float[3];
+        o.bpvertices[3][0] = -1.0; o.bpvertices[3][1] = 1.0; o.bpvertices[3][2] = 1.0;
+        o.bpvertices[4] = new float[3];
+        o.bpvertices[4][0] = -1.0; o.bpvertices[4][1] = -1.0; o.bpvertices[4][2] = -1.0;
+        o.bpvertices[5] = new float[3];
+        o.bpvertices[5][0] = 1.0; o.bpvertices[5][1] = -1.0; o.bpvertices[5][2] = -1.0;
+        o.bpvertices[6] = new float[3];
+        o.bpvertices[6][0] = 1.0; o.bpvertices[6][1] = 1.0; o.bpvertices[6][2] = -1.0;
+        o.bpvertices[7] = new float[3];
+        o.bpvertices[7][0] = -1.0; o.bpvertices[7][1] = 1.0; o.bpvertices[7][2] = -1.0;
+        
+        //Faces        
+        o.bpfaces[0] = new int[4];
+        o.bpfaces[0][0] = 0; o.bpfaces[0][1] = 1; o.bpfaces[0][2] = 2; o.bpfaces[0][3] = 3;
+        o.bpfaces[1] = new int[4];
+        o.bpfaces[1][0] = 1; o.bpfaces[1][1] = 5; o.bpfaces[1][2] = 6; o.bpfaces[1][3] = 4;
+        o.bpfaces[2] = new int[4];
+        o.bpfaces[2][0] = 0; o.bpfaces[2][1] = 1; o.bpfaces[2][2] = 5; o.bpfaces[2][3] = 4;
+        o.bpfaces[3] = new int[4];
+        o.bpfaces[3][0] = 4; o.bpfaces[3][1] = 5; o.bpfaces[3][2] = 6; o.bpfaces[3][3] = 7;
+        o.bpfaces[4] = new int[4];
+        o.bpfaces[4][0] = 0; o.bpfaces[4][1] = 4; o.bpfaces[4][2] = 7; o.bpfaces[4][3] = 3;
+        o.bpfaces[5] = new int[4];
+        o.bpfaces[5][0] = 3; o.bpfaces[5][1] = 2; o.bpfaces[5][2] = 6; o.bpfaces[5][3] = 7;
+        
 	return o;
 }
 
@@ -129,8 +230,6 @@ float m_amb[4] = {0,0.1f,0,1};
 float m_spe[4] = {0.1f,0.1f,0.1f,1};
 float shiny = 10;
 
-float m_temp[4] = {1.0f,1.0f,1.0f,1}; //Temporary material 
-float no_mat[4] = { 0,0,0,1 }; //Empty material
 
 //viewing angles, used in rotating the scene
 float angle = 0.0f;
@@ -316,6 +415,13 @@ void keyboard(unsigned char key, int xIn, int yIn){
 			else
                             moveObject(selectedObject,Y,-0.3);
                         break;
+                        
+            case 'i':
+                selectedObject->getBoundingBox();
+                break;
+            case 'u':
+                showBounding = !showBounding;
+                break;
 	}
 }
 
