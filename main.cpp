@@ -33,6 +33,25 @@ struct Object{
 	int objType;
 	//Material data
 	int materialType;
+        
+        //Since bounding box rotates, scales, translates, need to keep track of its surfaces as planes
+        //Then test ray intersection with individual planes
+        //Wonder if there's an easier way than doing it manually?
+        /*
+        void getBoundingBox(){
+            double matModelView[16];
+            glMatrixMode(GL_MODELVIEW);
+            glPushMatrix();
+                glLoadIdentity();
+                glTranslatef(position[X],position[Y],position[Z]);
+                glRotatef(rotation[X],1,0,0);
+                glRotatef(rotation[Y],0,1,0);
+                glRotatef(rotation[Z],0,0,1);
+                glScalef(scale[X],scale[Y],scale[Z]);
+                glGetDoublev(GL_MODELVIEW_MATRIX, matModelView);
+            glPopMatrix();
+        }
+        */
 
 	//method that actually draws the object
 	void draw(){
@@ -180,7 +199,7 @@ void init(void){
 
 }
 
-//function for moving a light, dependent on the camera angle
+//function for moving an object, dependent on the camera angle
 void moveObject(Object* o, int direction, float distance){
 	//math equation to calculate the direction the terrain is currently facing (from 0 to 3 inclusive)
 	int facing = (((int)angle+45)/90)%4;
@@ -204,6 +223,30 @@ void moveObject(Object* o, int direction, float distance){
 			break;
 	}
 }
+//function for scaling an object
+void rotateObject(Object* o, int direction, float distance){
+	//math equation to calculate the direction the terrain is currently facing (from 0 to 3 inclusive)
+	int facing = (((int)angle+45)/90)%4;
+	//equation adjusted if angle is negative
+	if(angle < 0){
+		facing = ((((int)angle-45)/90)+4)%4;
+	}
+	//lightPos is moved in one of the 4 directions, depending on the facing value.
+	switch(facing){
+		case 0:
+			o->rotation[direction] += distance;
+			break;
+		case 1:
+			o->rotation[(-direction)+2] -= distance*(direction-1);	//(-direction)+2 swaps the X and Z values (0 and 2)
+			break;
+		case 2:
+			o->rotation[direction] -= distance;
+			break;
+		case 3:
+			o->rotation[(-direction)+2] += distance*(direction-1);	//we multiply distance by direction-1 as we need to reverse the distance if travelling on the Z axis
+			break;
+	}
+}
 
 //function for keyboard commands
 void keyboard(unsigned char key, int xIn, int yIn){
@@ -220,27 +263,58 @@ void keyboard(unsigned char key, int xIn, int yIn){
 			//Add empty model to be selected at start
 			selectedObject = &placeholder;
 			break;
+                
+                /*
+               //camera zoom
+                case '.':
+                        camDist += 1;
+                        break;
+                case ',':
+                        camDist -= 1;
+                        break; 
+                */
 		///movement controls - explained more in moveObject method
 		case 'w':	//move light forward
-			moveObject(selectedObject,Z,-0.3);
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, Z, -1);
+			else
+                            moveObject(selectedObject,Z,-0.3);
 			break;
 		case 's':	//move light backwards
-			moveObject(selectedObject,Z,0.3);
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, Z, 1);
+			else
+                            moveObject(selectedObject,Z,0.3);
 			break;
 		case 'd':	//move light right
-			moveObject(selectedObject,X,0.3);
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, X, 1);
+			else
+                            moveObject(selectedObject,X,0.3);
 			break;
 		case 'a':	//move light left
-			moveObject(selectedObject,X,-0.3);
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, X, -1);
+			else
+                            moveObject(selectedObject,X,-0.3);
 			break;
+                case 'z':
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, Y, 1);
+			else
+                            moveObject(selectedObject,Y,0.3);
+                        break;
+                case 'x':   
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, Y, -1);
+			else
+                            moveObject(selectedObject,Y,-0.3);
+                        break;
 	}
 }
 
 //Raycasting - mostly class code 
 //Move ray logic to separate file once sure about the inputs/outputs 
-//Problem: always drawing from initial camera position
-// -- actually glGetIngererv(GL_VIEWPORT, viewport) get starting position based on actual camera location
-//    BUT current camera movement works based on matrix transforms and camera position is fixed
 
 void rayCast(int x, int y){
     printf("Projecting\n");
@@ -283,6 +357,12 @@ void drawRay(){
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
 }
 
+bool rayPlaneIntersect(void){
+    
+    
+    return false;
+}
+
 void mouse(int btn, int state, int x, int y){
     if (btn == GLUT_LEFT_BUTTON){
         if (state == GLUT_UP){
@@ -323,6 +403,7 @@ void display(void){
 
 	gluLookAt(camPos[X], camPos[Y], camPos[Z], camTarget[X], camTarget[Y], camTarget[Z], 0,1,0);
         
+        //Camera call
 	if (camDist > 1) {
 		camDist = 1;
 	}
@@ -332,7 +413,7 @@ void display(void){
 	else if (camElev > 85) {
 		camElev = 85;
 	}
-	orbitView(camDist, camTwist, camElev, camAzimuth);
+	orbitView(camDist, camTwist, camElev, angle);
         
 	glPushMatrix();	//Push base matrix that everything else will be pushed onto
                 /*
@@ -407,11 +488,11 @@ void FPSTimer(int value){
 void special(int key, int xIn, int yIn){
 	switch(key){
 		case GLUT_KEY_LEFT:	//Left and right arrow adjust the angle of the scene. 
-                        camAzimuth -= 1;
+                        angle -= 1;
 			//angle -= 1.5f;		//This angle variable is used in a rotation around the y
 			break;						//axis in the display function.
 		case GLUT_KEY_RIGHT:
-                        camAzimuth += 1;
+                        angle += 1;
 			//angle += 1.5f;
 			break;
 		case GLUT_KEY_UP:		//Up and down arrow adjust V(ertical)angle, which
