@@ -37,6 +37,12 @@ struct Object{
         //Since bounding box rotates, scales, translates, need to keep track of its surfaces as planes
         //Then test ray intersection with individual planes
         //Wonder if there's an easier way than doing it manually?
+        
+        //WAIT NO
+        //Transform the ray with the inverse of the box transformation matrix
+        //Then do aabb slab ray intersection, then transform it by the box matrix again
+        //WAY easier!
+        
         /*
         void getBoundingBox(){
             double matModelView[16];
