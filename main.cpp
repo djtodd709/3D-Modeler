@@ -30,6 +30,14 @@ bool showBounding = false;
 float m_temp[4] = {1.0f,1.0f,1.0f,1}; //Temporary material 
 float no_mat[4] = { 0,0,0,1 }; //Empty material
 
+//Ray vars
+double* m_start = new double[3];
+double* m_end = new double[3];
+
+//Local ray
+double* lm_start = new double[3];
+double* lm_end = new double[3];
+
 struct Object{
 	//Transform data
 	float position[3];
@@ -43,6 +51,8 @@ struct Object{
         float* bpvertices[8];
         int* bpfaces[6];
         
+        double matModelView[16];
+        double invModelView[16];
         /*
         //Bounding box
         float bvertices[24] = {
@@ -77,8 +87,6 @@ struct Object{
         //WAY easier!
         
         void getBoundingBox(){
-            double matModelView[16];
-            double invModelView[16];
             glMatrixMode(GL_MODELVIEW);
             glPushMatrix();
                 glLoadIdentity();
@@ -108,10 +116,36 @@ struct Object{
                 else
                     cout<<invModelView[i]<<" ";
             }
+            cout<<"\n";
+        }
+        
+        void getLocalRay(){
+            getBoundingBox();
+            matrixMultiplyRay(invModelView, m_start, lm_start);
+            matrixMultiplyRay(invModelView, m_end, lm_end);
+            printf("Local ray\n");
+            printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
         }
 
 	//method that actually draws the object
 	void draw(){
+                //Local coordinate bounding box for debug
+                if (showBounding && objType != -1 ){
+                    m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
+                    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
+                    for(int i=0; i<6; i++){
+
+                        glBegin(GL_LINE_STRIP);
+                            glVertex3fv(bpvertices[bpfaces[i][0]]);
+                            glVertex3fv(bpvertices[bpfaces[i][1]]);
+                            glVertex3fv(bpvertices[bpfaces[i][2]]);
+                            glVertex3fv(bpvertices[bpfaces[i][3]]);
+                            glVertex3fv(bpvertices[bpfaces[i][0]]);
+                        glEnd();
+
+                    }
+                    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
+                }
 		glPushMatrix();
 			//TODO: Apply Material
 			//Apply transformations
@@ -246,9 +280,6 @@ float camZ = 0;
 float camPos[] = {0, 9, 27};	//where the camera is
 float camTarget[] = {0,0,0};
 
-//Ray vars
-double* m_start = new double[3];
-double* m_end = new double[3];
 
 //initial settings for main window. Called (almost) at the beginning of the program.
 void init(void){
@@ -417,7 +448,7 @@ void keyboard(unsigned char key, int xIn, int yIn){
                         break;
                         
             case 'i':
-                selectedObject->getBoundingBox();
+                selectedObject->getLocalRay();
                 break;
             case 'u':
                 showBounding = !showBounding;
@@ -467,6 +498,16 @@ void drawRay(){
             glVertex3f(m_end[0], m_end[1], m_end[2]);
     glEnd();
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
+    
+    if (showBounding && selectedObject->objType != -1 ){
+        m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
+        glBegin(GL_LINES);
+            glVertex3f(lm_start[0], lm_start[1], lm_start[2]);
+            glVertex3f(lm_end[0], lm_end[1], lm_end[2]);
+        glEnd();
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
+    }
 }
 
 bool rayPlaneIntersect(void){
