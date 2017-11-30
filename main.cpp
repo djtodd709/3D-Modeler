@@ -28,12 +28,49 @@ int selectedMaterial = 0;
 
 //Initialize here because they're used in the Object class
 bool showBounding = false;
-float m_temp[4] = {1.0f,1.0f,1.0f,1}; //Temporary material 
+float m_temp[4] = {1.0f,1.0f,1.0f,1}; //Temporary material
 float no_mat[4] = { 0,0,0,1 }; //Empty material
 
 //Ray vars
 double* m_start = new double[3];
 double* m_end = new double[3];
+
+//Material 0 properties - kinda grassy
+float m0_dif[4] = {0.6f,0.9f,0.4f,1};
+float m0_amb[4] = {0.3f,0.45f,0.2f,1};
+float m0_spe[4] = {0.6f,0.9f,0.4f,1};
+float shiny0 = 10;
+
+//Material 1 properties - kinda gold
+float m1_dif[4] = {0.9f,0.8f,0.2f,1};
+float m1_amb[4] = {0.5f,0.4f,0,1};
+float m1_spe[4] = {1,1,1,1};
+float shiny1 = 60;
+
+//Material 2 properties - white
+float m2_dif[4] = {0.9f,0.9f,0.9f,1};
+float m2_amb[4] = {0.5f,0.5f,0.5f,1};
+float m2_spe[4] = {1,1,1,1};
+float shiny2 = 10;
+
+//Material 3 properties - red
+float m3_dif[4] = {0.9f,0.2f,0.2f,1};
+float m3_amb[4] = {0.5f,0.1f,0.1f,1};
+float m3_spe[4] = {1,1,1,1};
+float shiny3 = 30;
+
+//Material 4 properties - blue
+float m4_dif[4] = {0.2f,0.2f,0.9f,1};
+float m4_amb[4] = {0.1f,0.1f,0.5f,1};
+float m4_spe[4] = {1,1,1,1};
+float shiny4 = 30;
+
+//Material 5 properties - dark grey
+float m5_dif[4] = {0.1f,0.1f,0.1f,1};
+float m5_amb[4] = {0.05f,0.05f,0.05f,1};
+float m5_spe[4] = {0.5f,0.5f,0.5f,1};
+float shiny5 = 10;
+
 
 struct Object{
 	//Transform data
@@ -44,34 +81,34 @@ struct Object{
 	int objType;
 	//Material data
 	int materialType;
-        
+
         //Bounding box vertices
         float* bpvertices[8];
         int* bpfaces[6];
-        
+
         //ModelView matrix
         double matModelView[16];
         double invModelView[16];
-        
+
         //Local ray
         double* lm_start = new double[3];
         double* lm_end = new double[3];
 
-        
+
         //Notes:
         //Since bounding box rotates, scales, translates, need to keep track of its surfaces as planes
         //Then test ray intersection with individual planes
         //Wonder if there's an easier way than doing it manually?
-        
+
         //WAIT NO
         //Transform the ray with the inverse of the box transformation matrix
         //Then do aabb slab ray intersection, then transform it by the box matrix again
         //WAY easier!
-        
-        //Get world to local transformation matrix by inverting the object's modelview matrix 
+
+        //Get world to local transformation matrix by inverting the object's modelview matrix
         //Since M * M^-1 = I, A * M = A * M^-1
         void getLocalMatrix(){
-            
+
             //Get the modelview matrix for this object by applying transform commands to identity matrix
             glMatrixMode(GL_MODELVIEW);
             glPushMatrix(); //Create new matrix on stack so we can call this from anywhere
@@ -83,9 +120,9 @@ struct Object{
                 glScalef(scale[X],scale[Y],scale[Z]);
                 glGetDoublev(GL_MODELVIEW_MATRIX, matModelView); //Read matrix
             glPopMatrix(); //Restore matrix stack to original state
-            
+
             //Figure out matrix inverse
-            
+
             //Debug output
             for(int i=0; i<sizeof(matModelView)/sizeof(matModelView[0]); i++){
                 if (i%4==3)
@@ -93,10 +130,10 @@ struct Object{
                 else
                     cout<<matModelView[i]<<" ";
             }
-            
+
             cout<<"Inverse->\n";
             gluInvertMatrix(matModelView, invModelView); //Calculate inverse matrix
-            
+
             for(int i=0; i<sizeof(invModelView)/sizeof(invModelView[0]); i++){
                 if (i%4==3)
                     cout<<invModelView[i]<<"\n";
@@ -105,7 +142,7 @@ struct Object{
             }
             cout<<"\n";
         }
-        
+
         //Calculate a ray that is relative to the origin of the box
         void getLocalRay(){
             getLocalMatrix(); //Make sure we have latest inverse modelview
@@ -116,7 +153,7 @@ struct Object{
             printf("Local ray\n");
             printf("(%f,%f,%f)-->(%f,%f,%f)\n\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
         }
-        
+
         //Undo the transformation - this is just for checking right now
         //but once we calculate intersection points in local space, they can be transformed to world space in the same way
         void getWorldRay(){
@@ -127,27 +164,71 @@ struct Object{
             printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
         }
 
+				//Method to apply material based on variable
+				void selectMaterial(){
+					switch(materialType){
+						case 0:		//Apply material settings
+							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m0_dif);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m0_amb);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m0_spe);
+							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny0);
+							break;
+						case 1:	//Apply material settings
+							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m1_dif);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m1_amb);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m1_spe);
+							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny1);
+							break;
+						case 2:	//Apply material settings
+							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m2_dif);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m2_amb);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m2_spe);
+							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny2);
+							break;
+						case 3:	//Apply material settings
+							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m3_dif);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m3_amb);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m3_spe);
+							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny3);
+							break;
+						case 4:	//Apply material settings
+							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m4_dif);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m4_amb);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m4_spe);
+							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny4);
+							break;
+						case 5:	//Apply material settings
+							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m5_dif);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m5_amb);
+							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m5_spe);
+							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny5);
+							break;
+					}
+
+				}
+
 	//method that actually draws the object
 	void draw(){
-                //Local coordinate bounding box for debug
-                if (showBounding && objType != -1 ){
-                    m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
-                    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
-                    for(int i=0; i<6; i++){
+    //Local coordinate bounding box for debug
+    if (showBounding && objType != -1 ){
+        m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
+        for(int i=0; i<6; i++){
 
-                        glBegin(GL_LINE_STRIP);
-                            glVertex3fv(bpvertices[bpfaces[i][0]]);
-                            glVertex3fv(bpvertices[bpfaces[i][1]]);
-                            glVertex3fv(bpvertices[bpfaces[i][2]]);
-                            glVertex3fv(bpvertices[bpfaces[i][3]]);
-                            glVertex3fv(bpvertices[bpfaces[i][0]]);
-                        glEnd();
+            glBegin(GL_LINE_STRIP);
+                glVertex3fv(bpvertices[bpfaces[i][0]]);
+                glVertex3fv(bpvertices[bpfaces[i][1]]);
+                glVertex3fv(bpvertices[bpfaces[i][2]]);
+                glVertex3fv(bpvertices[bpfaces[i][3]]);
+                glVertex3fv(bpvertices[bpfaces[i][0]]);
+            glEnd();
 
-                    }
-                    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
-                }
+        }
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
+    }
 		glPushMatrix();
-			//TODO: Apply Material
+			//Apply Material
+			selectMaterial();
 			//Apply transformations
 			glTranslatef(position[X],position[Y],position[Z]);
 			glRotatef(rotation[X],1,0,0);
@@ -168,13 +249,13 @@ struct Object{
 				case 4: glutSolidOctahedron();
 								break;
 			}
-                        
+
                         //Draw the bounding box - oops something is connected wrong
                         if (showBounding && objType != -1 ){
                             m_temp[0] = 1; m_temp[1] = 0; m_temp[2] = 0;
                             glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
                             for(int i=0; i<6; i++){
-                                
+
                                 glBegin(GL_LINE_STRIP);
                                     glVertex3fv(bpvertices[bpfaces[i][0]]);
                                     glVertex3fv(bpvertices[bpfaces[i][1]]);
@@ -182,7 +263,7 @@ struct Object{
                                     glVertex3fv(bpvertices[bpfaces[i][3]]);
                                     glVertex3fv(bpvertices[bpfaces[i][0]]);
                                 glEnd();
-                                 
+
                             }
                             glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
                         }
@@ -207,7 +288,7 @@ Object MakeObject(int model){
 	o.scale[X] = 1;
 	o.scale[Y] = 1;
 	o.scale[Z] = 1;
-        
+
         //Initialize the bounding box
         //Sorry for the trash code :(
         //Mostly from that one lecture on meshes
@@ -228,8 +309,8 @@ Object MakeObject(int model){
         o.bpvertices[6][0] = 1.0; o.bpvertices[6][1] = 1.0; o.bpvertices[6][2] = -1.0;
         o.bpvertices[7] = new float[3];
         o.bpvertices[7][0] = -1.0; o.bpvertices[7][1] = 1.0; o.bpvertices[7][2] = -1.0;
-        
-        //Faces        
+
+        //Faces
         o.bpfaces[0] = new int[4];
         o.bpfaces[0][0] = 0; o.bpfaces[0][1] = 1; o.bpfaces[0][2] = 2; o.bpfaces[0][3] = 3;
         o.bpfaces[1] = new int[4];
@@ -242,7 +323,7 @@ Object MakeObject(int model){
         o.bpfaces[4][0] = 0; o.bpfaces[4][1] = 4; o.bpfaces[4][2] = 7; o.bpfaces[4][3] = 3;
         o.bpfaces[5] = new int[4];
         o.bpfaces[5][0] = 3; o.bpfaces[5][1] = 2; o.bpfaces[5][2] = 6; o.bpfaces[5][3] = 7;
-        
+
 	return o;
 }
 
@@ -253,20 +334,14 @@ Object placeholder;
 //Light 0 properties - orange
 float l0pos[4] = {10.0f,5.0f,10.0f,1};
 float l0dif[4] = {0.7f,0.4f,0.2f,1};
-float l0amb[4] = {0.1f,0.1f,0.1f,1};
-float l0spe[4] = {0.9f,0.6f,0.3f,1};
+float l0amb[4] = {0.2f,0.2f,0.2f,1};
+float l0spe[4] = {0.9f,0.7f,0.5f,1};
 
 //Light 1 properties - blue
 float l1pos[4] = {-10.0f,5.0f,-10.0f,1};
 float l1dif[4] = {0.2f,0.4f,0.7f,1};
-float l1amb[4] = {0.1f,0.1f,0.1f,1};
-float l1spe[4] = {0.3f,0.6f,0.9f,1};
-
-//Material properties - kinda grassy
-float m_dif[4] = {0.6f,0.9f,0.4f,1};
-float m_amb[4] = {0,0.1f,0,1};
-float m_spe[4] = {0.1f,0.1f,0.1f,1};
-float shiny = 10;
+float l1amb[4] = {0.2f,0.2f,0.2f,1};
+float l1spe[4] = {0.5f,0.7f,0.9f,1};
 
 
 //viewing angles, used in rotating the scene
@@ -315,10 +390,10 @@ void init(void){
 	glLightfv(GL_LIGHT1, GL_SPECULAR, l1spe);
 
 	//Apply material settings
-	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m_dif);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m_amb);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m_spe);
-	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m1_dif);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m1_amb);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m1_spe);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny1);
 
 	//adjust view
 	glMatrixMode(GL_MODELVIEW);
@@ -352,7 +427,7 @@ void moveObject(Object* o, int direction, float distance){
 	if(angle < 0){
 		facing = ((((int)angle-45)/90)+4)%4;
 	}
-	//lightPos is moved in one of the 4 directions, depending on the facing value.
+	//object is moved in one of the 4 directions, depending on the facing value.
 	switch(facing){
 		case 0:
 			o->position[direction] += distance;
@@ -368,6 +443,48 @@ void moveObject(Object* o, int direction, float distance){
 			break;
 	}
 }
+
+//function for scaling an object, dependent on the camera angle
+void scaleObject(Object* o, int direction, float distance){
+	//math equation to calculate the direction the terrain is currently facing (from 0 to 3 inclusive)
+	int facing = (((int)angle+45)/90)%4;
+	//equation adjusted if angle is negative
+	if(angle < 0){
+		facing = ((((int)angle-45)/90)+4)%4;
+	}
+	//object is moved in one of the 4 directions, depending on the facing value.
+	switch(facing){
+		case 0:
+			if(o->scale[direction] > 0.3 || distance > 0)
+				o->scale[direction] += distance;
+			break;
+		case 1:
+			if(direction == X){
+				if(o->scale[Z] > 0.3 || distance < 0)
+					o->scale[(-direction)+2] -= distance;	//(-direction)+2 swaps the X and Z values (0 and 2)
+			}
+			else{
+				if(o->scale[(-direction)+2] > 0.3 || distance < 0)
+					o->scale[(-direction)+2] -= distance*(direction-1);	//(-direction)+2 swaps the X and Z values (0 and 2)
+			}
+			break;
+		case 2:
+			if(o->scale[direction] > 0.3 || distance < 0)
+				o->scale[direction] -= distance;
+			break;
+		case 3:
+			if(direction == X){
+				if(o->scale[Z] > 0.3 || distance > 0)
+					o->scale[(-direction)+2] += distance;	//we multiply distance by direction-1 as we need to reverse the distance if travelling on the Z axis
+			}
+			else{
+				if(o->scale[(-direction)+2] > 0.3 || distance > 0)
+					o->scale[(-direction)+2] += distance*(direction-1);	//(-direction)+2 swaps the X and Z values (0 and 2)
+			}
+			break;
+	}
+}
+
 //function for rotating an object
 void rotateObject(Object* o, int direction, float distance){
 	//math equation to calculate the direction the terrain is currently facing (from 0 to 3 inclusive)
@@ -376,7 +493,7 @@ void rotateObject(Object* o, int direction, float distance){
 	if(angle < 0){
 		facing = ((((int)angle-45)/90)+4)%4;
 	}
-	//lightPos is moved in one of the 4 directions, depending on the facing value.
+	//object is moved in one of the 4 directions, depending on the facing value.
 	switch(facing){
 		case 0:
 			o->rotation[direction] += distance;
@@ -408,7 +525,7 @@ void keyboard(unsigned char key, int xIn, int yIn){
 			//Add empty model to be selected at start
 			selectedObject = &placeholder;
 			break;
-                
+
                 /*
                //camera zoom
                 case '.':
@@ -416,57 +533,95 @@ void keyboard(unsigned char key, int xIn, int yIn){
                         break;
                 case ',':
                         camDist -= 1;
-                        break; 
+                        break;
                 */
 		///movement controls - explained more in moveObject method
 		case 'w':	//move light forward
 			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, Z, -1);
+                            rotateObject(selectedObject, X, -1);
 			else
                             moveObject(selectedObject,Z,-0.3);
 			break;
-		case 's':	//move light backwards
-			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, Z, 1);
-			else
-                            moveObject(selectedObject,Z,0.3);
+		case 'W':
+			scaleObject(selectedObject, Z, 0.3);
 			break;
-		case 'd':	//move light right
+		case 's':	//move light backwards
 			if ( mod == GLUT_ACTIVE_ALT)
                             rotateObject(selectedObject, X, 1);
 			else
+                            moveObject(selectedObject,Z,0.3);
+			break;
+		case 'S':
+			scaleObject(selectedObject, Z, -0.3);
+			break;
+		case 'd':	//move light right
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, Z, -1);
+			else
                             moveObject(selectedObject,X,0.3);
+			break;
+		case 'D':
+			scaleObject(selectedObject, X, 0.3);
 			break;
 		case 'a':	//move light left
 			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, X, -1);
+                            rotateObject(selectedObject, Z, 1);
 			else
                             moveObject(selectedObject,X,-0.3);
 			break;
-                case 'z':
+		case 'A':
+			scaleObject(selectedObject, X, -0.3);
+			break;
+    case 'z':
 			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, Y, 1);
+        selectedObject->rotation[Y] -= 1;
 			else
-                            moveObject(selectedObject,Y,0.3);
-                        break;
-                case 'x':   
+        selectedObject->position[Y] += 0.3;
+      break;
+		case 'Z':
+			selectedObject->scale[Y] += 0.3;
+			break;
+    case 'x':
 			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, Y, -1);
+        selectedObject->rotation[Y] += 1;
 			else
-                            moveObject(selectedObject,Y,-0.3);
-                        break;
-                        
-            case 'i':
-                selectedObject->getLocalRay();
-                break;
-            case 'u':
-                showBounding = !showBounding;
-                break;
+        selectedObject->position[Y] -= 0.3;
+    	break;
+		case 'X':
+			if(selectedObject->scale[Y] > 0.3)
+				selectedObject->scale[Y] -= 0.3;
+			break;
+
+    case 'i':
+      selectedObject->getLocalRay();
+      break;
+    case 'u':
+      showBounding = !showBounding;
+      break;
+		case 'm':
+			selectedObject->materialType = selectedMaterial;
+			break;
+
+		case '1':
+			selectedMaterial = 0;
+			break;
+		case '2':
+			selectedMaterial = 1;
+			break;
+		case '3':
+			selectedMaterial = 2;
+			break;
+		case '4':
+			selectedMaterial = 3;
+			break;
+		case '5':
+			selectedMaterial = 4;
+			break;
 	}
 }
 
-//Raycasting - mostly class code 
-//Move ray logic to separate file once sure about the inputs/outputs 
+//Raycasting - mostly class code
+//Move ray logic to separate file once sure about the inputs/outputs
 
 void rayCast(int x, int y){
     printf("Projecting\n");
@@ -494,12 +649,12 @@ void rayCast(int x, int y){
 
     // now you can create a ray from m_start to m_end
     printf("(%f,%f,%f)-->(%f,%f,%f)\n\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
-    
+
 }
 
 //display call for the ray
 void drawRay(){
-    
+
     m_temp[0] = 0; m_temp[1] = 1; m_temp[2] = 0;
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp); //Ray should not be affected by lighting
     glBegin(GL_LINES);
@@ -507,7 +662,7 @@ void drawRay(){
             glVertex3f(m_end[0], m_end[1], m_end[2]);
     glEnd();
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
-    
+
     //Draw local object ray
     if (showBounding && selectedObject->objType != -1 ){
         m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
@@ -522,8 +677,8 @@ void drawRay(){
 
 //Future home for slab intersection
 bool rayPlaneIntersect(void){
-    
-    
+
+
     return false;
 }
 
@@ -531,7 +686,7 @@ void mouse(int btn, int state, int x, int y){
     if (btn == GLUT_LEFT_BUTTON){
         if (state == GLUT_UP){
         }
-        
+
         if (state == GLUT_DOWN){
             rayCast(x, y);
         }
@@ -566,7 +721,7 @@ void display(void){
 	glLoadIdentity();
 
 	gluLookAt(camPos[X], camPos[Y], camPos[Z], camTarget[X], camTarget[Y], camTarget[Z], 0,1,0);
-        
+
         //Camera call
 	if (camDist > 1) {
 		camDist = 1;
@@ -578,7 +733,7 @@ void display(void){
 		camElev = 85;
 	}
 	orbitView(camDist, camTwist, camElev, angle);
-        
+
 	glPushMatrix();	//Push base matrix that everything else will be pushed onto
                 /*
                  * Wrong place for camera transforms apparently :/
@@ -586,10 +741,10 @@ void display(void){
 		glRotatef(angle, 0, 1, 0);	//make rotations based on angle and Vangle
 		glRotatef(Vangle, 1, 0, 0);	//now all other content in the scene will have these rotations applied
                 */
-        
+
                 //Call the ray draw function
                 drawRay();
-        
+
 		glPushMatrix();
 			//set positions of both lights
 			glLightfv(GL_LIGHT0, GL_POSITION, l0pos);
@@ -597,7 +752,12 @@ void display(void){
 		//pop matrix to ignore upcoming transformations
 		glPopMatrix();
 
+		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m2_dif);
+		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m2_amb);
+		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m2_spe);
+		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny2);
 		glBegin(GL_QUADS);
+			glNormal3f(0,1,0);
 			glVertex3i(10,0,10);
 			glVertex3i(10,0,-10);
 			glVertex3i(-10,0,-10);
@@ -652,7 +812,7 @@ void FPSTimer(int value){
 //function for arrow key handling
 void special(int key, int xIn, int yIn){
 	switch(key){
-		case GLUT_KEY_LEFT:	//Left and right arrow adjust the angle of the scene. 
+		case GLUT_KEY_LEFT:	//Left and right arrow adjust the angle of the scene.
 			angle -= 1.5f;		//This angle variable is used in a rotation around the y
 			break;						//axis in the display function.
 		case GLUT_KEY_RIGHT:
@@ -660,9 +820,9 @@ void special(int key, int xIn, int yIn){
 			break;
 		case GLUT_KEY_UP:		//Up and down arrow adjust V(ertical)angle, which
 			//Vangle += 1.5f;		//again is used in the display function, rotating around x.
-                        camElev += 1;       
+                        camElev += 1;
 			break;
-		case GLUT_KEY_DOWN:      
+		case GLUT_KEY_DOWN:
                         camElev -= 1;
 			//Vangle -= 1.5f;
 			break;
@@ -680,6 +840,9 @@ void menuProc(int value){
 		sceneGraph.push_back(o);
 		selectedObject = &sceneGraph.back();
 	}
+	else if (value <= 11){
+		selectedMaterial = value - 6;
+	}
 }
 
 //function to create and set up right click menu on main window
@@ -691,9 +854,18 @@ void createOurMenu(){
 	glutAddMenuEntry("Torus", 4);
 	glutAddMenuEntry("Octahedron", 5);
 
+	int matMenu_id = glutCreateMenu(menuProc); //set up material menu
+	glutAddMenuEntry("Grassy", 6);
+	glutAddMenuEntry("Gold", 7);
+	glutAddMenuEntry("White", 8);
+	glutAddMenuEntry("Red", 9);
+	glutAddMenuEntry("Blue", 10);
+	glutAddMenuEntry("Grey", 11);
+
 	int main_id = glutCreateMenu(menuProc); //set up base menu
 	glutAddMenuEntry("Quit", 0);
 	glutAddSubMenu("Shapes", shapeMenu_id);
+	glutAddSubMenu("Materials", matMenu_id);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);	//attach menu to right click
 }
 
@@ -715,7 +887,7 @@ int main(int argc, char** argv)
 	glutMouseFunc(mouse);
 	glutMotionFunc(mouseMotion);
 	glutPassiveMotionFunc(mousePassiveMotion);
-        
+
 	glutTimerFunc(17, FPSTimer, 0);		//registers "FPSTimer" as the timer callback function
 	glutSpecialFunc(special);					//registers "special" as the special callback function
 	glutReshapeFunc(reshape);					//registers "reshape" as the reshape callback function
