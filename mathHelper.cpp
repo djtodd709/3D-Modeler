@@ -1,6 +1,6 @@
 #include "mathHelper.h"
 
-//Multiplication for ray/modelview
+//Multiplication for ray/modelview multiplication - this just makes the code cleaner
 bool matrixMultiplyRay(double m1[16], double m2[3], double mo[3]){
     double translate; //Need an extra 1 to extend the matrix
    
@@ -8,13 +8,6 @@ bool matrixMultiplyRay(double m1[16], double m2[3], double mo[3]){
     mo[1] = m1[1]*m2[0]+m1[5]*m2[1]+m1[9]*m2[2]+m1[13]*1;
     mo[2] = m1[2]*m2[0]+m1[6]*m2[1]+m1[10]*m2[2]+m1[14]*1;
     translate = m1[3]*m2[0]+m1[7]*m2[1]+m1[11]*m2[2]+m1[15]*1;
-    
-    /*
-    //Now make it a 3x3 again
-    mo[0]=mo[0]/translate;
-    mo[1]=mo[1]/translate;
-    mo[2]=mo[2]/translate;
-     */
     
     return true;
 }

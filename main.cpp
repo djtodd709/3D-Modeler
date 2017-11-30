@@ -26,6 +26,7 @@ using namespace std;
 //Global Variables
 int selectedMaterial = 0;
 
+//Initialize here because they're used in the Object class
 bool showBounding = false;
 float m_temp[4] = {1.0f,1.0f,1.0f,1}; //Temporary material 
 float no_mat[4] = { 0,0,0,1 }; //Empty material
@@ -48,35 +49,15 @@ struct Object{
 	//Material data
 	int materialType;
         
+        //Bounding box vertices
         float* bpvertices[8];
         int* bpfaces[6];
         
+        //ModelView matrix
         double matModelView[16];
         double invModelView[16];
-        /*
-        //Bounding box
-        float bvertices[24] = {
-            // front
-            -1.0, -1.0,  1.0,
-             1.0, -1.0,  1.0,
-             1.0,  1.0,  1.0,
-            -1.0,  1.0,  1.0,
-            // back
-            -1.0, -1.0, -1.0,
-             1.0, -1.0, -1.0,
-             1.0,  1.0, -1.0,
-            -1.0,  1.0, -1.0,
-        }; 
-         
-       int bfaces[24] = {
-             0, 1, 2, 3,
-             1, 5, 6, 2,
-             0, 1, 5, 4,
-             4, 5, 6, 7,
-             0, 4, 7, 3,
-             3, 2, 6, 7
-        };
-         */
+        
+        //Notes:
         //Since bounding box rotates, scales, translates, need to keep track of its surfaces as planes
         //Then test ray intersection with individual planes
         //Wonder if there's an easier way than doing it manually?
@@ -86,29 +67,34 @@ struct Object{
         //Then do aabb slab ray intersection, then transform it by the box matrix again
         //WAY easier!
         
-        void getBoundingBox(){
+        //Get world to local transformation matrix by inverting the object's modelview matrix 
+        //Since M * M^-1 = I, A * M = A * M^-1
+        void getLocalMatrix(){
+            
+            //Get the modelview matrix for this object by applying transform commands to identity matrix
             glMatrixMode(GL_MODELVIEW);
-            glPushMatrix();
+            glPushMatrix(); //Create new matrix on stack so we can call this from anywhere
                 glLoadIdentity();
                 glTranslatef(position[X],position[Y],position[Z]);
                 glRotatef(rotation[X],1,0,0);
                 glRotatef(rotation[Y],0,1,0);
                 glRotatef(rotation[Z],0,0,1);
                 glScalef(scale[X],scale[Y],scale[Z]);
-                glGetDoublev(GL_MODELVIEW_MATRIX, matModelView);
-            glPopMatrix();
+                glGetDoublev(GL_MODELVIEW_MATRIX, matModelView); //Read matrix
+            glPopMatrix(); //Restore matrix stack to original state
             
             //Figure out matrix inverse
             
-            //Check matrix
+            //Debug output
             for(int i=0; i<sizeof(matModelView)/sizeof(matModelView[0]); i++){
                 if (i%4==3)
                     cout<<matModelView[i]<<"\n";
                 else
                     cout<<matModelView[i]<<" ";
             }
+            
             cout<<"Inverse->\n";
-            gluInvertMatrix(matModelView, invModelView);
+            gluInvertMatrix(matModelView, invModelView); //Calculate inverse matrix
             
             for(int i=0; i<sizeof(invModelView)/sizeof(invModelView[0]); i++){
                 if (i%4==3)
@@ -119,10 +105,23 @@ struct Object{
             cout<<"\n";
         }
         
+        //Calculate a ray that is relative to the origin of the box
         void getLocalRay(){
-            getBoundingBox();
+            getLocalMatrix(); //Make sure we have latest inverse modelview
+            //World ray => Local ray
             matrixMultiplyRay(invModelView, m_start, lm_start);
             matrixMultiplyRay(invModelView, m_end, lm_end);
+            //Debug
+            printf("Local ray\n");
+            printf("(%f,%f,%f)-->(%f,%f,%f)\n\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
+        }
+        
+        //Undo the transformation - this is just for checking right now
+        //but once we calculate intersection points in local space, they can be transformed to world space in the same way
+        void getWorldRay(){
+            //Local ray => World ray
+            matrixMultiplyRay(matModelView, lm_start, m_start);
+            matrixMultiplyRay(matModelView, lm_end, m_end);
             printf("Local ray\n");
             printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
         }
@@ -168,6 +167,8 @@ struct Object{
 				case 4: glutSolidOctahedron();
 								break;
 			}
+                        
+                        //Draw the bounding box - oops something is connected wrong
                         if (showBounding && objType != -1 ){
                             m_temp[0] = 1; m_temp[1] = 0; m_temp[2] = 0;
                             glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
@@ -207,6 +208,8 @@ Object MakeObject(int model){
 	o.scale[Z] = 1;
         
         //Initialize the bounding box
+        //Sorry for the trash code :(
+        //Mostly from that one lecture on meshes
         //Vertices
         o.bpvertices[0] = new float[3];
         o.bpvertices[0][0] = -1.0; o.bpvertices[0][1] = -1.0; o.bpvertices[0][2] = 1.0;
@@ -330,7 +333,12 @@ void init(void){
 	printf("-----------Instructions----------\n");
 	printf("Q/Esc - Quit\n");
 	printf("Arrow - Turn (left/right) or tilt (up/down) scene\n");
+	printf("WSADZX - Move the object forward/back/left/right/up/down\n");
+	printf("ALT+WASDZX - Rotate the object forward/back/left/right/up/down\n");
 	printf("Right click for more features in the menu!\n");
+        printf("-----------Debug-----------------\n");
+        printf("u - enable object bounding boxes, yellow is relative to center of object\n");
+        printf("i - recalculate ray relative to the box\n");
 	printf("---------------------------------\n");
 
 }
@@ -359,7 +367,7 @@ void moveObject(Object* o, int direction, float distance){
 			break;
 	}
 }
-//function for scaling an object
+//function for rotating an object
 void rotateObject(Object* o, int direction, float distance){
 	//math equation to calculate the direction the terrain is currently facing (from 0 to 3 inclusive)
 	int facing = (((int)angle+45)/90)%4;
@@ -510,6 +518,7 @@ void drawRay(){
     }
 }
 
+//Future home for slab intersection
 bool rayPlaneIntersect(void){
     
     
@@ -570,6 +579,7 @@ void display(void){
         
 	glPushMatrix();	//Push base matrix that everything else will be pushed onto
                 /*
+                 * Wrong place for camera transforms apparently :/
                 //Camera transforms
 		glRotatef(angle, 0, 1, 0);	//make rotations based on angle and Vangle
 		glRotatef(Vangle, 1, 0, 0);	//now all other content in the scene will have these rotations applied
@@ -641,16 +651,14 @@ void FPSTimer(int value){
 void special(int key, int xIn, int yIn){
 	switch(key){
 		case GLUT_KEY_LEFT:	//Left and right arrow adjust the angle of the scene. 
-                        angle -= 1;
-			//angle -= 1.5f;		//This angle variable is used in a rotation around the y
+			angle -= 1.5f;		//This angle variable is used in a rotation around the y
 			break;						//axis in the display function.
 		case GLUT_KEY_RIGHT:
-                        angle += 1;
-			//angle += 1.5f;
+			angle += 1.5f;
 			break;
 		case GLUT_KEY_UP:		//Up and down arrow adjust V(ertical)angle, which
 			//Vangle += 1.5f;		//again is used in the display function, rotating around x.
-                        camElev += 1;
+                        camElev += 1;       
 			break;
 		case GLUT_KEY_DOWN:      
                         camElev -= 1;
