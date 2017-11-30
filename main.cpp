@@ -35,10 +35,6 @@ float no_mat[4] = { 0,0,0,1 }; //Empty material
 double* m_start = new double[3];
 double* m_end = new double[3];
 
-//Local ray
-double* lm_start = new double[3];
-double* lm_end = new double[3];
-
 struct Object{
 	//Transform data
 	float position[3];
@@ -56,6 +52,11 @@ struct Object{
         //ModelView matrix
         double matModelView[16];
         double invModelView[16];
+        
+        //Local ray
+        double* lm_start = new double[3];
+        double* lm_end = new double[3];
+
         
         //Notes:
         //Since bounding box rotates, scales, translates, need to keep track of its surfaces as planes
@@ -232,7 +233,7 @@ Object MakeObject(int model){
         o.bpfaces[0] = new int[4];
         o.bpfaces[0][0] = 0; o.bpfaces[0][1] = 1; o.bpfaces[0][2] = 2; o.bpfaces[0][3] = 3;
         o.bpfaces[1] = new int[4];
-        o.bpfaces[1][0] = 1; o.bpfaces[1][1] = 5; o.bpfaces[1][2] = 6; o.bpfaces[1][3] = 4;
+        o.bpfaces[1][0] = 1; o.bpfaces[1][1] = 5; o.bpfaces[1][2] = 6; o.bpfaces[1][3] = 2;
         o.bpfaces[2] = new int[4];
         o.bpfaces[2][0] = 0; o.bpfaces[2][1] = 1; o.bpfaces[2][2] = 5; o.bpfaces[2][3] = 4;
         o.bpfaces[3] = new int[4];
@@ -507,12 +508,13 @@ void drawRay(){
     glEnd();
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
     
+    //Draw local object ray
     if (showBounding && selectedObject->objType != -1 ){
         m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
         glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
         glBegin(GL_LINES);
-            glVertex3f(lm_start[0], lm_start[1], lm_start[2]);
-            glVertex3f(lm_end[0], lm_end[1], lm_end[2]);
+            glVertex3dv(selectedObject->lm_start);
+            glVertex3dv(selectedObject->lm_end);
         glEnd();
         glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
     }
