@@ -96,8 +96,11 @@ struct Object{
 
         //Intersection status
         bool rayHit;
+        double closestDist;
         double intersect1[3];
         double intersect2[3];
+        double localintersect1[3];
+        double localintersect2[3];
 
         //Notes:
         //Since bounding box rotates, scales, translates, need to keep track of its surfaces as planes
@@ -168,8 +171,19 @@ struct Object{
             printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
         }
         
+        double getClosestDist(){
+            matrixMultiplyRay(matModelView, localintersect1, intersect1);
+            closestDist = sqrt(
+                    (intersect1[0]-m_start[0])*(intersect1[0]-m_start[0])+
+                    (intersect1[1]-m_start[1])*(intersect1[1]-m_start[1])+
+                    (intersect1[2]-m_start[2])*(intersect1[2]-m_start[2]));
+            return closestDist;
+        }
+        
         //Future home for slab intersection
         bool rayBoxIntersect(void){
+            rayHit = false;
+            
             getLocalRay();
             double rayDir[3] = {
                 lm_end[0]-lm_start[0],
@@ -209,27 +223,15 @@ struct Object{
                     return false;
             }
                 
-            
-            //For each slab do:	//example using X planes
-            //if (xd = 0)	//ray is parallel to the planes 
-            //if (x0 < xl or x0 > xh) 
-            //return false;	//outside slab 
-            //else
-            //T1 = (xl – x0) / xd 
-            //T2 = (xh – x0) / xd
-            //if (T1 > T2)
-            //swap (T1, T2) //since T1 intersection with near plane
-            //if (T1 > Tnear)
-            //Tnear = T1 //want largest Tnear
-            //if (T2 < Tfar)
-            //Tfar = T2 //want smallest Tfar 
-            //if (Tnear > Tfar) 
-            //return false	//box is missed
-            //if (Tfar < 0)
-            //return false //box behind ray origin
-            //End for;
-            //Return true;
             printf ("Intersection!\n");
+            rayHit = true;
+            localintersect1[X] = lm_start[X]+rayDir[X]*tmin;
+            localintersect1[Y] = lm_start[Y]+rayDir[Y]*tmin;
+            localintersect1[Z] = lm_start[Z]+rayDir[Z]*tmin;
+            
+            localintersect2[X] = lm_start[X]+rayDir[X]*tmax;
+            localintersect2[Y] = lm_start[Y]+rayDir[Y]*tmax;
+            localintersect2[Z] = lm_start[Z]+rayDir[Z]*tmax;
             return true;
         }
 
@@ -293,6 +295,13 @@ struct Object{
                         glEnd();
 
                     }
+                    if (rayHit){
+                        glPointSize(3);
+                        glBegin(GL_POINTS);
+                            glVertex3dv(localintersect1);
+                            glVertex3dv(localintersect2);
+                        glEnd();
+                    }
                     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
                 }
 		glPushMatrix();
@@ -333,6 +342,13 @@ struct Object{
                                     glVertex3fv(bpvertices[bpfaces[i][0]]);
                                 glEnd();
 
+                            }
+                            if (rayHit){
+                                glPointSize(3);
+                                glBegin(GL_POINTS);
+                                    glVertex3dv(localintersect1);
+                                    glVertex3dv(localintersect2);
+                                glEnd();
                             }
                             glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
                         }
@@ -667,6 +683,8 @@ void keyboard(unsigned char key, int xIn, int yIn){
                 //Debug controls
                 case 'i':
                     selectedObject->rayBoxIntersect();
+                    if(selectedObject->rayHit)
+                        printf("Dist to intersect:\n%f\n", selectedObject->getClosestDist());
                     break;
                 case 'u':
                     showBounding = !showBounding;
