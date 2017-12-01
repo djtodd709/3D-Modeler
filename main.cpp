@@ -4,6 +4,9 @@
 #include <time.h>
 #include <list>
 #include <iostream>
+#include <string>
+#include <fstream>
+#include <cstdlib>
 #include "mathHelper.h"
 
 #ifdef __APPLE__
@@ -16,6 +19,7 @@
 #  include <GL/freeglut.h>
 #include <valarray>
 #endif
+
 
 #define X 0
 #define Y 1
@@ -572,6 +576,78 @@ void rotateObject(Object* o, int direction, float distance){
 	}
 }
 
+void save(){
+
+	string filename;
+	cout << "What name would you like to give your file? (no .txt):\n";
+	getline (cin, filename);
+
+	filename += ".txt";
+	ofstream savefile (filename.c_str());
+	for(list<Object>::const_iterator iterator = sceneGraph.begin(); iterator != sceneGraph.end(); iterator++){
+		Object o = ((Object) *iterator);
+		savefile << o.position[X] << "\n" << o.position[Y] << "\n" << o.position[Z] << "\n";
+		savefile << o.rotation[X] << "\n" << o.rotation[Y] << "\n" << o.rotation[Z] << "\n";
+		savefile << o.scale[X] << "\n" << o.scale[Y] << "\n" << o.scale[Z] << "\n";
+		savefile << o.objType << "\n" << o.materialType << "\n";
+	}
+	savefile.close();
+	cout << "Saved\n";
+}
+
+void load(){
+
+	string filename;
+	cout << "What is the name of your file? (no .txt):\n";
+	getline (cin, filename);
+
+	filename += ".txt";
+	ifstream savefile (filename.c_str());
+	string objData;
+	if (savefile.is_open())
+  {
+		angle = 0.0f;
+		Vangle = 0.0f;
+		sceneGraph.clear();
+		//Add empty model to be selected at start
+		selectedObject = &placeholder;
+    while ( getline (savefile,objData) )
+    {
+			if(objData != ""){
+				Object o;
+				o.position[X] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.position[Y] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.position[Z] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.rotation[X] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.rotation[Y] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.rotation[Z] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.scale[X] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.scale[Y] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.scale[Z] = atof(objData.c_str());
+				getline(savefile,objData);
+				o.objType = atoi(objData.c_str());
+				getline(savefile,objData);
+				o.materialType = atoi(objData.c_str());
+
+				sceneGraph.push_back(o);
+			}
+    }
+    savefile.close();
+		cout << "Loaded\n";
+  }
+		cout << "Unable to open file";
+	}
+
+}
+
 //function for keyboard commands
 void keyboard(unsigned char key, int xIn, int yIn){
 	int mod = glutGetModifiers();
@@ -705,6 +781,12 @@ void keyboard(unsigned char key, int xIn, int yIn){
 										o = MakeObject(4);
 										sceneGraph.push_back(o);
 										selectedObject = &sceneGraph.back();
+										break;
+								case 'n':
+										load();
+										break;
+								case 'b':
+										save();
 										break;
 	}
 }
