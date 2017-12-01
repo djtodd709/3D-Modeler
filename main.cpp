@@ -34,6 +34,11 @@ int selectedMaterial = 0;
 bool showBounding = false;
 float m_temp[4] = {1.0f,1.0f,1.0f,1}; //Temporary material
 float no_mat[4] = { 0,0,0,1 }; //Empty material
+bool groundHit = false;
+double groundInt[3];
+double distToGround;
+float groundSize = 10;
+float groundHeight = -1.2;
 
 //Ray vars
 double* m_start = new double[3];
@@ -292,7 +297,7 @@ struct Object{
 	//method that actually draws the object
 	void draw(){
                 //Local coordinate bounding box for debug
-                if (showBounding && objType != -1 ){
+                if (showBounding && objType != -1){
                     m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
                     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
                     for(int i=0; i<6; i++){
@@ -326,11 +331,11 @@ struct Object{
 			glScalef(scale[X],scale[Y],scale[Z]);
 			//Render object
 			switch (objType) {
-				case 0: glutSolidCube(1);
+				case 0: glutSolidCube(2);
 								break;
 				case 1: glutSolidSphere(1,16,16);
 								break;
-				case 2: glRotatef(-90,1,0,0);
+				case 2: //glRotatef(-90,1,0,0);
 								glutSolidCone(1,1,16,16);
 								break;
 				case 3: glutSolidTorus(0.5,1,16,16);
@@ -378,6 +383,8 @@ Object MakeObject(int model){
 	o.position[Z] = 0;
 	//rotation
 	o.rotation[X] = 0;
+        if (o.objType == 2) //Cone is rotated at start
+            o.rotation[X] = -90;
 	o.rotation[Y] = 0;
 	o.rotation[Z] = 0;
 	//scale
@@ -388,23 +395,34 @@ Object MakeObject(int model){
         //Initialize the bounding box
         //Sorry for the trash code :(
         //Mostly from that one lecture on meshes
+        
+        //Define bounding box by two corners
+        float maxPos[3] = {1, 1, 1}; 
+        float minPos[3] = {-1, -1, -1};   
+        if (o.objType == 2) { //Cone is weirdly shaped
+            maxPos[0] = 1; maxPos[1] = 1; maxPos[2] = 1; 
+            minPos[0] = -1; minPos[1] = -1; minPos[2] = 0;           
+        } else if (o.objType == 3) { //Torus is weirdly shaped
+            maxPos[0] = 1.5; maxPos[1] = 1.5; maxPos[2] = 0.5; 
+            minPos[0] = -0.5; minPos[1] = -1.5; minPos[0] = -1.5;           
+        } 
         //Vertices
         o.bpvertices[0] = new float[3];
-        o.bpvertices[0][0] = -1.0; o.bpvertices[0][1] = -1.0; o.bpvertices[0][2] = 1.0;
+        o.bpvertices[0][0] = minPos[0]; o.bpvertices[0][1] = minPos[1]; o.bpvertices[0][2] = maxPos[2];
         o.bpvertices[1] = new float[3];
-        o.bpvertices[1][0] = 1.0; o.bpvertices[1][1] = -1.0; o.bpvertices[1][2] = 1.0;
+        o.bpvertices[1][0] = maxPos[0]; o.bpvertices[1][1] = minPos[1]; o.bpvertices[1][2] = maxPos[2];
         o.bpvertices[2] = new float[3];
-        o.bpvertices[2][0] = 1.0; o.bpvertices[2][1] = 1.0; o.bpvertices[2][2] = 1.0;
+        o.bpvertices[2][0] = maxPos[0]; o.bpvertices[2][1] = maxPos[1]; o.bpvertices[2][2] = maxPos[2];
         o.bpvertices[3] = new float[3];
-        o.bpvertices[3][0] = -1.0; o.bpvertices[3][1] = 1.0; o.bpvertices[3][2] = 1.0;
+        o.bpvertices[3][0] = minPos[0]; o.bpvertices[3][1] = maxPos[1]; o.bpvertices[3][2] = maxPos[2];
         o.bpvertices[4] = new float[3];
-        o.bpvertices[4][0] = -1.0; o.bpvertices[4][1] = -1.0; o.bpvertices[4][2] = -1.0;
+        o.bpvertices[4][0] = minPos[0]; o.bpvertices[4][1] = minPos[1]; o.bpvertices[4][2] = minPos[2];
         o.bpvertices[5] = new float[3];
-        o.bpvertices[5][0] = 1.0; o.bpvertices[5][1] = -1.0; o.bpvertices[5][2] = -1.0;
+        o.bpvertices[5][0] = maxPos[0]; o.bpvertices[5][1] = minPos[1]; o.bpvertices[5][2] = minPos[2];
         o.bpvertices[6] = new float[3];
-        o.bpvertices[6][0] = 1.0; o.bpvertices[6][1] = 1.0; o.bpvertices[6][2] = -1.0;
+        o.bpvertices[6][0] = maxPos[0]; o.bpvertices[6][1] = maxPos[1]; o.bpvertices[6][2] = minPos[2];
         o.bpvertices[7] = new float[3];
-        o.bpvertices[7][0] = -1.0; o.bpvertices[7][1] = 1.0; o.bpvertices[7][2] = -1.0;
+        o.bpvertices[7][0] = minPos[0]; o.bpvertices[7][1] = maxPos[1]; o.bpvertices[7][2] = minPos[2];
 
         //Faces
         o.bpfaces[0] = new int[4];
@@ -520,6 +538,42 @@ void init(void){
         printf("l - recalculate ray relative to the box\n");
 	printf("---------------------------------\n");
 
+}
+
+bool rayGroundIntersect(void){
+    groundHit = false;
+    //Since ground is always flat, don't worry about local space or anything
+    double rayDir[3] = {
+        m_end[0]-m_start[0],
+        m_end[1]-m_start[1],
+        m_end[2]-m_start[2]
+    };
+    //Normalize
+    double rayMag = sqrt(rayDir[0]*rayDir[0]+rayDir[1]*rayDir[1]+rayDir[2]*rayDir[2]);
+    rayDir[0] = rayDir[0]/rayMag; rayDir[1] = rayDir[1]/rayMag; rayDir[2] = rayDir[2]/rayMag;
+    //Since ground is always flat assume normal is always up
+    double normal[3] = {0,1,0};
+    
+    double denom = rayDir[0]*normal[0] + rayDir[1]*normal[1] + rayDir[2]*normal[2];
+    
+    if (abs(denom) > 0.0001) {
+        double diff[3] = { m_start[0]-0, m_start[1]-(groundHeight), m_start[2]-0 }; 
+        double t = diff[0]*normal[0] + diff[1]*normal[1] + diff[2]*normal[2];
+        t = -t/denom;
+        groundInt[X] = m_start[X]+rayDir[X]*t;
+        groundInt[Y] = m_start[Y]+rayDir[Y]*t;
+        groundInt[Z] = m_start[Z]+rayDir[Z]*t;
+        if(groundInt[X] > -groundSize && groundInt[X] < groundSize && groundInt[Z] > -groundSize && groundInt[Z] < groundSize){
+            groundHit = true;
+            distToGround = t;
+            printf("Hit ground at (%f,%f,%f), %f away\n", groundInt[X], groundInt[Y], groundInt[Z], t);
+            return true;
+        }
+        
+    }
+    
+    return false;
+    
 }
 
 //function for moving an object, dependent on the camera angle
@@ -872,6 +926,12 @@ void drawRay(){
             glVertex3f(m_start[0], m_start[1], m_start[2]);
             glVertex3f(m_end[0], m_end[1], m_end[2]);
     glEnd();
+    if (groundHit){
+        glPointSize(3);
+        glBegin(GL_POINTS);
+            glVertex3dv(groundInt);
+        glEnd();
+    }
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
 
     //Draw local object ray
@@ -893,6 +953,7 @@ void mouse(int btn, int state, int x, int y){
 
         if (state == GLUT_DOWN){
             rayCast(x, y);
+            rayGroundIntersect();
         }
     }
 }
@@ -913,6 +974,7 @@ void orbitView(float dist, float twist, float elev, float azimuth) {
 	glRotatef(azimuth, 0.0, 1.0, 0.0);
 	//glTranslatef(-(float)gridsize / 2, 0, -(float)gridsize/2);
 }
+
 
 /* display function - GLUT display callback function
  *		clears the screen, sets the camera position
@@ -957,17 +1019,17 @@ void display(void){
 		glPopMatrix();
 
                 glPushMatrix();
-                    glTranslatef(0,-1.2,0); //Move the ground plane down from the origin a bit
+                    glTranslatef(0,groundHeight,0); //Move the ground plane down from the origin a bit
                     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m2_dif);
                     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m2_amb);
                     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m2_spe);
                     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny2);
                     glBegin(GL_QUADS);
                             glNormal3f(0,1,0);
-                            glVertex3i(10,0,10);
-                            glVertex3i(10,0,-10);
-                            glVertex3i(-10,0,-10);
-                            glVertex3i(-10,0,10);
+                            glVertex3i(groundSize,0,groundSize);
+                            glVertex3i(groundSize,0,-groundSize);
+                            glVertex3i(-groundSize,0,-groundSize);
+                            glVertex3i(-groundSize,0,groundSize);
                     glEnd();
 		glPopMatrix();
 
