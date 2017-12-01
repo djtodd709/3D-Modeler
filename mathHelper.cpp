@@ -12,6 +12,10 @@ bool matrixMultiplyRay(double m1[16], double m2[3], double mo[3]){
     return true;
 }
 
+bool slabIntersect(){
+    
+}
+
 //This code comes from the MESA implementation of the glu library found at https://www.mesa3d.org/
 bool gluInvertMatrix(double m[16], double invOut[16])
 {

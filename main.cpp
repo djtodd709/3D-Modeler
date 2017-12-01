@@ -91,9 +91,13 @@ struct Object{
         double invModelView[16];
 
         //Local ray
-        double* lm_start = new double[3];
-        double* lm_end = new double[3];
+        double lm_start[3];
+        double lm_end[3];
 
+        //Intersection status
+        bool rayHit;
+        double intersect1[3];
+        double intersect2[3];
 
         //Notes:
         //Since bounding box rotates, scales, translates, need to keep track of its surfaces as planes
@@ -163,69 +167,134 @@ struct Object{
             printf("Local ray\n");
             printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
         }
+        
+        //Future home for slab intersection
+        bool rayBoxIntersect(void){
+            getLocalRay();
+            double rayDir[3] = {
+                lm_end[0]-lm_start[0],
+                lm_end[1]-lm_start[1],
+                lm_end[2]-lm_start[2]
+            };
+            //Normalize
+            double rayMag = sqrt(rayDir[0]*rayDir[0]+rayDir[1]*rayDir[1]+rayDir[2]*rayDir[2]);
+            rayDir[0] = rayDir[0]/rayMag; rayDir[1] = rayDir[1]/rayMag; rayDir[2] = rayDir[2]/rayMag;
+            
+            printf("Ray Vector\n");
+            printf("(%f,%f,%f)\n", rayDir[0], rayDir[1], rayDir[2]);
+            
+            double t1, t2;
+            double tmin = -INFINITY, tmax = INFINITY;
+            //Since we're always intersecting with a vertex aligned box,
+            //We can assume the vertices are defined correctly and we can use vertex 0 and vertex 6 to define it
+            //0 is l and 6 is h
+            for (int i=0; i<3;i++){
+                if (rayDir[i]==0){
+                    if (lm_start[i]< bpvertices[0][i] || lm_start[i]>bpvertices[6][i]){
+                        return false;
+                    }
+                } else {
+                    t1 = (bpvertices[0][i] - lm_start[i]) / rayDir[i];
+                    t2 = (bpvertices[6][i] - lm_start[i]) / rayDir[i];
+                }
+                if (t1 > t2)
+                    swap(t1,t2);
+                if (t1 > tmin)
+                    tmin = t1;
+                if (t2 < tmax)
+                    tmax = t2;
+                if (tmin > tmax)
+                    return false;
+                if (tmax < 0)
+                    return false;
+            }
+                
+            
+            //For each slab do:	//example using X planes
+            //if (xd = 0)	//ray is parallel to the planes 
+            //if (x0 < xl or x0 > xh) 
+            //return false;	//outside slab 
+            //else
+            //T1 = (xl – x0) / xd 
+            //T2 = (xh – x0) / xd
+            //if (T1 > T2)
+            //swap (T1, T2) //since T1 intersection with near plane
+            //if (T1 > Tnear)
+            //Tnear = T1 //want largest Tnear
+            //if (T2 < Tfar)
+            //Tfar = T2 //want smallest Tfar 
+            //if (Tnear > Tfar) 
+            //return false	//box is missed
+            //if (Tfar < 0)
+            //return false //box behind ray origin
+            //End for;
+            //Return true;
+            printf ("Intersection!\n");
+            return true;
+        }
 
-				//Method to apply material based on variable
-				void selectMaterial(){
-					switch(materialType){
-						case 0:		//Apply material settings
-							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m0_dif);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m0_amb);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m0_spe);
-							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny0);
-							break;
-						case 1:	//Apply material settings
-							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m1_dif);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m1_amb);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m1_spe);
-							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny1);
-							break;
-						case 2:	//Apply material settings
-							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m2_dif);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m2_amb);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m2_spe);
-							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny2);
-							break;
-						case 3:	//Apply material settings
-							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m3_dif);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m3_amb);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m3_spe);
-							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny3);
-							break;
-						case 4:	//Apply material settings
-							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m4_dif);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m4_amb);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m4_spe);
-							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny4);
-							break;
-						case 5:	//Apply material settings
-							glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m5_dif);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m5_amb);
-							glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m5_spe);
-							glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny5);
-							break;
-					}
+        //Method to apply material based on variable
+        void selectMaterial(){
+                switch(materialType){
+                        case 0:		//Apply material settings
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m0_dif);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m0_amb);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m0_spe);
+                                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny0);
+                                break;
+                        case 1:	//Apply material settings
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m1_dif);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m1_amb);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m1_spe);
+                                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny1);
+                                break;
+                        case 2:	//Apply material settings
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m2_dif);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m2_amb);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m2_spe);
+                                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny2);
+                                break;
+                        case 3:	//Apply material settings
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m3_dif);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m3_amb);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m3_spe);
+                                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny3);
+                                break;
+                        case 4:	//Apply material settings
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m4_dif);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m4_amb);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m4_spe);
+                                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny4);
+                                break;
+                        case 5:	//Apply material settings
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m5_dif);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m5_amb);
+                                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m5_spe);
+                                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny5);
+                                break;
+                }
 
-				}
+        }
 
 	//method that actually draws the object
 	void draw(){
-    //Local coordinate bounding box for debug
-    if (showBounding && objType != -1 ){
-        m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
-        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
-        for(int i=0; i<6; i++){
+                //Local coordinate bounding box for debug
+                if (showBounding && objType != -1 ){
+                    m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
+                    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
+                    for(int i=0; i<6; i++){
 
-            glBegin(GL_LINE_STRIP);
-                glVertex3fv(bpvertices[bpfaces[i][0]]);
-                glVertex3fv(bpvertices[bpfaces[i][1]]);
-                glVertex3fv(bpvertices[bpfaces[i][2]]);
-                glVertex3fv(bpvertices[bpfaces[i][3]]);
-                glVertex3fv(bpvertices[bpfaces[i][0]]);
-            glEnd();
+                        glBegin(GL_LINE_STRIP);
+                            glVertex3fv(bpvertices[bpfaces[i][0]]);
+                            glVertex3fv(bpvertices[bpfaces[i][1]]);
+                            glVertex3fv(bpvertices[bpfaces[i][2]]);
+                            glVertex3fv(bpvertices[bpfaces[i][3]]);
+                            glVertex3fv(bpvertices[bpfaces[i][0]]);
+                        glEnd();
 
-        }
-        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
-    }
+                    }
+                    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
+                }
 		glPushMatrix();
 			//Apply Material
 			selectMaterial();
@@ -324,6 +393,9 @@ Object MakeObject(int model){
         o.bpfaces[5] = new int[4];
         o.bpfaces[5][0] = 3; o.bpfaces[5][1] = 2; o.bpfaces[5][2] = 6; o.bpfaces[5][3] = 7;
 
+        //Init ray
+        o.rayHit = false;
+        
 	return o;
 }
 
@@ -572,51 +644,52 @@ void keyboard(unsigned char key, int xIn, int yIn){
 		case 'A':
 			scaleObject(selectedObject, X, -0.3);
 			break;
-    case 'z':
-			if ( mod == GLUT_ACTIVE_ALT)
-        selectedObject->rotation[Y] -= 1;
-			else
-        selectedObject->position[Y] += 0.3;
-      break;
-		case 'Z':
-			selectedObject->scale[Y] += 0.3;
-			break;
-    case 'x':
-			if ( mod == GLUT_ACTIVE_ALT)
-        selectedObject->rotation[Y] += 1;
-			else
-        selectedObject->position[Y] -= 0.3;
-    	break;
-		case 'X':
-			if(selectedObject->scale[Y] > 0.3)
-				selectedObject->scale[Y] -= 0.3;
-			break;
+                case 'z':
+                    if (mod == GLUT_ACTIVE_ALT)
+                        selectedObject->rotation[Y] -= 1;
+                    else
+                        selectedObject->position[Y] += 0.3;
+                    break;
+                case 'Z':
+                    selectedObject->scale[Y] += 0.3;
+                    break;
+                case 'x':
+                    if (mod == GLUT_ACTIVE_ALT)
+                        selectedObject->rotation[Y] += 1;
+                    else
+                        selectedObject->position[Y] -= 0.3;
+                    break;
+                case 'X':
+                    if (selectedObject->scale[Y] > 0.3)
+                        selectedObject->scale[Y] -= 0.3;
+                    break;
 
-    case 'i':
-      selectedObject->getLocalRay();
-      break;
-    case 'u':
-      showBounding = !showBounding;
-      break;
-		case 'm':
-			selectedObject->materialType = selectedMaterial;
-			break;
+                //Debug controls
+                case 'i':
+                    selectedObject->rayBoxIntersect();
+                    break;
+                case 'u':
+                    showBounding = !showBounding;
+                    break;
+                case 'm':
+                    selectedObject->materialType = selectedMaterial;
+                    break;
 
-		case '1':
-			selectedMaterial = 0;
-			break;
-		case '2':
-			selectedMaterial = 1;
-			break;
-		case '3':
-			selectedMaterial = 2;
-			break;
-		case '4':
-			selectedMaterial = 3;
-			break;
-		case '5':
-			selectedMaterial = 4;
-			break;
+                case '1':
+                    selectedMaterial = 0;
+                    break;
+                case '2':
+                    selectedMaterial = 1;
+                    break;
+                case '3':
+                    selectedMaterial = 2;
+                    break;
+                case '4':
+                    selectedMaterial = 3;
+                    break;
+                case '5':
+                    selectedMaterial = 4;
+                    break;
 	}
 }
 
@@ -673,13 +746,6 @@ void drawRay(){
         glEnd();
         glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
     }
-}
-
-//Future home for slab intersection
-bool rayPlaneIntersect(void){
-
-
-    return false;
 }
 
 void mouse(int btn, int state, int x, int y){
@@ -751,18 +817,21 @@ void display(void){
 			glLightfv(GL_LIGHT1, GL_POSITION, l1pos);
 		//pop matrix to ignore upcoming transformations
 		glPopMatrix();
-
-		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m2_dif);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m2_amb);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m2_spe);
-		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny2);
-		glBegin(GL_QUADS);
-			glNormal3f(0,1,0);
-			glVertex3i(10,0,10);
-			glVertex3i(10,0,-10);
-			glVertex3i(-10,0,-10);
-			glVertex3i(-10,0,10);
-		glEnd();
+                
+                glPushMatrix();
+                    glTranslatef(0,-1.2,0); //Move the ground plane down from the origin a bit
+                    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m2_dif);
+                    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m2_amb);
+                    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m2_spe);
+                    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny2);
+                    glBegin(GL_QUADS);
+                            glNormal3f(0,1,0);
+                            glVertex3i(10,0,10);
+                            glVertex3i(10,0,-10);
+                            glVertex3i(-10,0,-10);
+                            glVertex3i(-10,0,10);
+                    glEnd();
+		glPopMatrix();
 
 		glPushMatrix();
 			for(list<Object>::const_iterator iterator = sceneGraph.begin(); iterator != sceneGraph.end(); iterator++){
@@ -863,7 +932,7 @@ void createOurMenu(){
 	glutAddMenuEntry("Grey", 11);
 
 	int main_id = glutCreateMenu(menuProc); //set up base menu
-	glutAddMenuEntry("Quit", 0);
+	//glutAddMenuEntry("Quit", 0);
 	glutAddSubMenu("Shapes", shapeMenu_id);
 	glutAddSubMenu("Materials", matMenu_id);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);	//attach menu to right click
