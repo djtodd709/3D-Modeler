@@ -65,13 +65,6 @@ float m4_amb[4] = {0.1f,0.1f,0.5f,1};
 float m4_spe[4] = {1,1,1,1};
 float shiny4 = 30;
 
-//Material 5 properties - dark grey
-float m5_dif[4] = {0.1f,0.1f,0.1f,1};
-float m5_amb[4] = {0.05f,0.05f,0.05f,1};
-float m5_spe[4] = {0.5f,0.5f,0.5f,1};
-float shiny5 = 10;
-
-
 struct Object{
 	//Transform data
 	float position[3];
@@ -167,7 +160,7 @@ struct Object{
             printf("Local ray\n");
             printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
         }
-        
+
         //Future home for slab intersection
         bool rayBoxIntersect(void){
             getLocalRay();
@@ -179,10 +172,10 @@ struct Object{
             //Normalize
             double rayMag = sqrt(rayDir[0]*rayDir[0]+rayDir[1]*rayDir[1]+rayDir[2]*rayDir[2]);
             rayDir[0] = rayDir[0]/rayMag; rayDir[1] = rayDir[1]/rayMag; rayDir[2] = rayDir[2]/rayMag;
-            
+
             printf("Ray Vector\n");
             printf("(%f,%f,%f)\n", rayDir[0], rayDir[1], rayDir[2]);
-            
+
             double t1, t2;
             double tmin = -INFINITY, tmax = INFINITY;
             //Since we're always intersecting with a vertex aligned box,
@@ -208,22 +201,22 @@ struct Object{
                 if (tmax < 0)
                     return false;
             }
-                
-            
+
+
             //For each slab do:	//example using X planes
-            //if (xd = 0)	//ray is parallel to the planes 
-            //if (x0 < xl or x0 > xh) 
-            //return false;	//outside slab 
+            //if (xd = 0)	//ray is parallel to the planes
+            //if (x0 < xl or x0 > xh)
+            //return false;	//outside slab
             //else
-            //T1 = (xl – x0) / xd 
+            //T1 = (xl – x0) / xd
             //T2 = (xh – x0) / xd
             //if (T1 > T2)
             //swap (T1, T2) //since T1 intersection with near plane
             //if (T1 > Tnear)
             //Tnear = T1 //want largest Tnear
             //if (T2 < Tfar)
-            //Tfar = T2 //want smallest Tfar 
-            //if (Tnear > Tfar) 
+            //Tfar = T2 //want smallest Tfar
+            //if (Tnear > Tfar)
             //return false	//box is missed
             //if (Tfar < 0)
             //return false //box behind ray origin
@@ -265,12 +258,6 @@ struct Object{
                                 glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m4_amb);
                                 glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m4_spe);
                                 glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny4);
-                                break;
-                        case 5:	//Apply material settings
-                                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m5_dif);
-                                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, m5_amb);
-                                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, m5_spe);
-                                glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shiny5);
                                 break;
                 }
 
@@ -395,7 +382,7 @@ Object MakeObject(int model){
 
         //Init ray
         o.rayHit = false;
-        
+
 	return o;
 }
 
@@ -434,7 +421,7 @@ float camTarget[] = {0,0,0};
 
 //initial settings for main window. Called (almost) at the beginning of the program.
 void init(void){
-	glClearColor(0, 0, 0, 0);	//black background
+	glClearColor(0.3f, 0.3f, 0.3f, 0);	//black background
 	glColor3f(1, 1, 1);
 
 	glMatrixMode(GL_PROJECTION);
@@ -483,10 +470,13 @@ void init(void){
 	printf("Arrow - Turn (left/right) or tilt (up/down) scene\n");
 	printf("WSADZX - Move the object forward/back/left/right/up/down\n");
 	printf("ALT+WASDZX - Rotate the object forward/back/left/right/up/down\n");
-	printf("Right click for more features in the menu!\n");
+	printf("SHIFT+WASDZX - Rotate the object forward/back/left/right/up/down\n");
+	printf("12345 - Change selected material to green/yellow/white/red/blue\n");
+	printf("YUIOP - Create cube/sphere/cone/torus/octahedron\n");
+	printf("M - Apply selected material to selected shape\n");
         printf("-----------Debug-----------------\n");
-        printf("u - enable object bounding boxes, yellow is relative to center of object\n");
-        printf("i - recalculate ray relative to the box\n");
+        printf("k - enable object bounding boxes, yellow is relative to center of object\n");
+        printf("l - recalculate ray relative to the box\n");
 	printf("---------------------------------\n");
 
 }
@@ -585,6 +575,7 @@ void rotateObject(Object* o, int direction, float distance){
 //function for keyboard commands
 void keyboard(unsigned char key, int xIn, int yIn){
 	int mod = glutGetModifiers();
+	Object o;
 	switch (key){
 		case 'q':	//quit
 		case 27:	//27 is the esc key
@@ -665,10 +656,10 @@ void keyboard(unsigned char key, int xIn, int yIn){
                     break;
 
                 //Debug controls
-                case 'i':
+                case 'k':
                     selectedObject->rayBoxIntersect();
                     break;
-                case 'u':
+                case 'l':
                     showBounding = !showBounding;
                     break;
                 case 'm':
@@ -690,6 +681,31 @@ void keyboard(unsigned char key, int xIn, int yIn){
                 case '5':
                     selectedMaterial = 4;
                     break;
+								case 'y':
+										o = MakeObject(0);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case 'u':
+										o = MakeObject(1);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case 'i':
+										o = MakeObject(2);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case 'o':
+										o = MakeObject(3);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case 'p':
+										o = MakeObject(4);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
 	}
 }
 
@@ -817,7 +833,7 @@ void display(void){
 			glLightfv(GL_LIGHT1, GL_POSITION, l1pos);
 		//pop matrix to ignore upcoming transformations
 		glPopMatrix();
-                
+
                 glPushMatrix();
                     glTranslatef(0,-1.2,0); //Move the ground plane down from the origin a bit
                     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, m2_dif);
@@ -898,46 +914,6 @@ void special(int key, int xIn, int yIn){
 	}
 }
 
-//function for menu selections
-void menuProc(int value){
-	if (value == 0){							//Quit handler
-		printf("Quit\n");
-		exit(0);
-	}
-	else if (value <= 5){
-		Object o = MakeObject(value-1);
-		sceneGraph.push_back(o);
-		selectedObject = &sceneGraph.back();
-	}
-	else if (value <= 11){
-		selectedMaterial = value - 6;
-	}
-}
-
-//function to create and set up right click menu on main window
-void createOurMenu(){
-	int shapeMenu_id = glutCreateMenu(menuProc); //set up shape menu
-	glutAddMenuEntry("Cube", 1);
-	glutAddMenuEntry("Sphere", 2);
-	glutAddMenuEntry("Cone", 3);
-	glutAddMenuEntry("Torus", 4);
-	glutAddMenuEntry("Octahedron", 5);
-
-	int matMenu_id = glutCreateMenu(menuProc); //set up material menu
-	glutAddMenuEntry("Grassy", 6);
-	glutAddMenuEntry("Gold", 7);
-	glutAddMenuEntry("White", 8);
-	glutAddMenuEntry("Red", 9);
-	glutAddMenuEntry("Blue", 10);
-	glutAddMenuEntry("Grey", 11);
-
-	int main_id = glutCreateMenu(menuProc); //set up base menu
-	//glutAddMenuEntry("Quit", 0);
-	glutAddSubMenu("Shapes", shapeMenu_id);
-	glutAddSubMenu("Materials", matMenu_id);
-	glutAttachMenu(GLUT_RIGHT_BUTTON);	//attach menu to right click
-}
-
 /* main function - program entry point */
 int main(int argc, char** argv)
 {
@@ -962,8 +938,6 @@ int main(int argc, char** argv)
 	glutReshapeFunc(reshape);					//registers "reshape" as the reshape callback function
 
 	init();						//initialize main window
-
-	createOurMenu();	//setup menu
 
 	glutMainLoop();				//starts the event glutMainLoop
 	return(0);					//return may not be necessary on all compilers
