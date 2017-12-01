@@ -478,6 +478,7 @@ void init(void){
 	printf("12345 - Change selected material to green/yellow/white/red/blue\n");
 	printf("YUIOP - Create cube/sphere/cone/torus/octahedron\n");
 	printf("M - Apply selected material to selected shape\n");
+	printf("B/N - Save/Load\n");
         printf("-----------Debug-----------------\n");
         printf("k - enable object bounding boxes, yellow is relative to center of object\n");
         printf("l - recalculate ray relative to the box\n");
@@ -643,6 +644,7 @@ void load(){
     savefile.close();
 		cout << "Loaded\n";
   }
+	else{
 		cout << "Unable to open file";
 	}
 
