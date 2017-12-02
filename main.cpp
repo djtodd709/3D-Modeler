@@ -172,7 +172,7 @@ struct Object{
             printf("Local ray\n");
             printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
         }
-        
+
         double getClosestDist(){
             matrixMultiplyRay(matModelView, localintersect1, intersect1);
             closestDist = sqrt(
@@ -181,11 +181,11 @@ struct Object{
                     (intersect1[2]-m_start[2])*(intersect1[2]-m_start[2]));
             return closestDist;
         }
-        
+
         //Future home for slab intersection
         bool rayBoxIntersect(void){
             rayHit = false;
-            
+
             getLocalRay();
             double rayDir[3] = {
                 lm_end[0]-lm_start[0],
@@ -224,33 +224,13 @@ struct Object{
                 if (tmax < 0)
                     return false;
             }
-                
 
-            //For each slab do:	//example using X planes
-            //if (xd = 0)	//ray is parallel to the planes
-            //if (x0 < xl or x0 > xh)
-            //return false;	//outside slab
-            //else
-            //T1 = (xl – x0) / xd
-            //T2 = (xh – x0) / xd
-            //if (T1 > T2)
-            //swap (T1, T2) //since T1 intersection with near plane
-            //if (T1 > Tnear)
-            //Tnear = T1 //want largest Tnear
-            //if (T2 < Tfar)
-            //Tfar = T2 //want smallest Tfar
-            //if (Tnear > Tfar)
-            //return false	//box is missed
-            //if (Tfar < 0)
-            //return false //box behind ray origin
-            //End for;
-            //Return true;
             printf ("Intersection!\n");
             rayHit = true;
             localintersect1[X] = lm_start[X]+rayDir[X]*tmin;
             localintersect1[Y] = lm_start[Y]+rayDir[Y]*tmin;
             localintersect1[Z] = lm_start[Z]+rayDir[Z]*tmin;
-            
+
             localintersect2[X] = lm_start[X]+rayDir[X]*tmax;
             localintersect2[Y] = lm_start[Y]+rayDir[Y]*tmax;
             localintersect2[Z] = lm_start[Z]+rayDir[Z]*tmax;
@@ -294,41 +274,69 @@ struct Object{
 
         }
 
+	void drawBox(){
+		m_temp[0] = 1; m_temp[1] = 0; m_temp[2] = 0;
+		glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
+		for(int i=0; i<6; i++){
+
+				glBegin(GL_LINE_STRIP);
+						glVertex3fv(bpvertices[bpfaces[i][0]]);
+						glVertex3fv(bpvertices[bpfaces[i][1]]);
+						glVertex3fv(bpvertices[bpfaces[i][2]]);
+						glVertex3fv(bpvertices[bpfaces[i][3]]);
+						glVertex3fv(bpvertices[bpfaces[i][0]]);
+				glEnd();
+
+		}
+		if (rayHit){
+				glPointSize(3);
+				glBegin(GL_POINTS);
+						glVertex3dv(localintersect1);
+						glVertex3dv(localintersect2);
+				glEnd();
+		}
+		glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
+	}
+
+	void applyTransforms(){
+		glTranslatef(position[X],position[Y],position[Z]);
+		glRotatef(rotation[X],1,0,0);
+		glRotatef(rotation[Y],0,1,0);
+		glRotatef(rotation[Z],0,0,1);
+		glScalef(scale[X],scale[Y],scale[Z]);
+	}
+
 	//method that actually draws the object
 	void draw(){
                 //Local coordinate bounding box for debug
                 if (showBounding && objType != -1){
-                    m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
-                    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
-                    for(int i=0; i<6; i++){
+									m_temp[0] = 1; m_temp[1] = 1; m_temp[2] = 0;
+									glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
+									for(int i=0; i<6; i++){
 
-                        glBegin(GL_LINE_STRIP);
-                            glVertex3fv(bpvertices[bpfaces[i][0]]);
-                            glVertex3fv(bpvertices[bpfaces[i][1]]);
-                            glVertex3fv(bpvertices[bpfaces[i][2]]);
-                            glVertex3fv(bpvertices[bpfaces[i][3]]);
-                            glVertex3fv(bpvertices[bpfaces[i][0]]);
-                        glEnd();
+											glBegin(GL_LINE_STRIP);
+													glVertex3fv(bpvertices[bpfaces[i][0]]);
+													glVertex3fv(bpvertices[bpfaces[i][1]]);
+													glVertex3fv(bpvertices[bpfaces[i][2]]);
+													glVertex3fv(bpvertices[bpfaces[i][3]]);
+													glVertex3fv(bpvertices[bpfaces[i][0]]);
+											glEnd();
 
-                    }
-                    if (rayHit){
-                        glPointSize(3);
-                        glBegin(GL_POINTS);
-                            glVertex3dv(localintersect1);
-                            glVertex3dv(localintersect2);
-                        glEnd();
-                    }
-                    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
+									}
+									if (rayHit){
+											glPointSize(3);
+											glBegin(GL_POINTS);
+													glVertex3dv(localintersect1);
+													glVertex3dv(localintersect2);
+											glEnd();
+									}
+									glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
                 }
 		glPushMatrix();
 			//Apply Material
 			selectMaterial();
 			//Apply transformations
-			glTranslatef(position[X],position[Y],position[Z]);
-			glRotatef(rotation[X],1,0,0);
-			glRotatef(rotation[Y],0,1,0);
-			glRotatef(rotation[Z],0,0,1);
-			glScalef(scale[X],scale[Y],scale[Z]);
+			applyTransforms();
 			//Render object
 			switch (objType) {
 				case 0: glutSolidCube(2);
@@ -344,30 +352,10 @@ struct Object{
 								break;
 			}
 
-                        //Draw the bounding box - oops something is connected wrong
-                        if (showBounding && objType != -1 ){
-                            m_temp[0] = 1; m_temp[1] = 0; m_temp[2] = 0;
-                            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, m_temp);
-                            for(int i=0; i<6; i++){
-
-                                glBegin(GL_LINE_STRIP);
-                                    glVertex3fv(bpvertices[bpfaces[i][0]]);
-                                    glVertex3fv(bpvertices[bpfaces[i][1]]);
-                                    glVertex3fv(bpvertices[bpfaces[i][2]]);
-                                    glVertex3fv(bpvertices[bpfaces[i][3]]);
-                                    glVertex3fv(bpvertices[bpfaces[i][0]]);
-                                glEnd();
-
-                            }
-                            if (rayHit){
-                                glPointSize(3);
-                                glBegin(GL_POINTS);
-                                    glVertex3dv(localintersect1);
-                                    glVertex3dv(localintersect2);
-                                glEnd();
-                            }
-                            glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_mat);
-                        }
+      //Draw the bounding box - oops something is connected wrong
+      if (showBounding && objType != -1 ){
+          drawBox();
+      }
 		glPopMatrix();
 	}
 };
@@ -395,17 +383,17 @@ Object MakeObject(int model){
         //Initialize the bounding box
         //Sorry for the trash code :(
         //Mostly from that one lecture on meshes
-        
+
         //Define bounding box by two corners
-        float maxPos[3] = {1, 1, 1}; 
-        float minPos[3] = {-1, -1, -1};   
+        float maxPos[3] = {1, 1, 1};
+        float minPos[3] = {-1, -1, -1};
         if (o.objType == 2) { //Cone is weirdly shaped
-            maxPos[0] = 1; maxPos[1] = 1; maxPos[2] = 1; 
-            minPos[0] = -1; minPos[1] = -1; minPos[2] = 0;           
+            maxPos[0] = 1; maxPos[1] = 1; maxPos[2] = 1;
+            minPos[0] = -1; minPos[1] = -1; minPos[2] = 0;
         } else if (o.objType == 3) { //Torus is weirdly shaped
-            maxPos[0] = 1.5; maxPos[1] = 1.5; maxPos[2] = 0.5; 
-            minPos[0] = -0.5; minPos[1] = -1.5; minPos[0] = -1.5;           
-        } 
+            maxPos[0] = 1.5; maxPos[1] = 1.5; maxPos[2] = 0.5;
+            minPos[0] = -0.5; minPos[1] = -1.5; minPos[0] = -1.5;
+        }
         //Vertices
         o.bpvertices[0] = new float[3];
         o.bpvertices[0][0] = minPos[0]; o.bpvertices[0][1] = minPos[1]; o.bpvertices[0][2] = maxPos[2];
@@ -525,17 +513,20 @@ void init(void){
 	printf("3D Modeler\n");
 	printf("-----------Instructions----------\n");
 	printf("Q/Esc - Quit\n");
+	printf("Left Click - Select an Object\n");
 	printf("Arrow - Turn (left/right) or tilt (up/down) scene\n");
 	printf("WSADZX - Move the object forward/back/left/right/up/down\n");
 	printf("ALT+WASDZX - Rotate the object forward/back/left/right/up/down\n");
 	printf("SHIFT+WASDZX - Rotate the object forward/back/left/right/up/down\n");
 	printf("12345 - Change selected material to green/yellow/white/red/blue\n");
-	printf("YUIOP - Create cube/sphere/cone/torus/octahedron\n");
-	printf("M - Apply selected material to selected shape\n");
-	printf("B/N - Save/Load\n");
+	printf("67890 - Create cube/sphere/cone/torus/octahedron\n");
+	printf("M - Apply selected material to moused over shape\n");
+	printf("P/L - Save/Load\n");
+	printf("HBVNGJ - Move light forward/back/left/right/up/down\n");
+	printf("K - Switch light\n");
         printf("-----------Debug-----------------\n");
-        printf("k - enable object bounding boxes, yellow is relative to center of object\n");
-        printf("l - recalculate ray relative to the box\n");
+        printf("i - enable object bounding boxes, yellow is relative to center of object\n");
+        printf("o - recalculate ray relative to the box\n");
 	printf("---------------------------------\n");
 
 }
@@ -553,11 +544,11 @@ bool rayGroundIntersect(void){
     rayDir[0] = rayDir[0]/rayMag; rayDir[1] = rayDir[1]/rayMag; rayDir[2] = rayDir[2]/rayMag;
     //Since ground is always flat assume normal is always up
     double normal[3] = {0,1,0};
-    
+
     double denom = rayDir[0]*normal[0] + rayDir[1]*normal[1] + rayDir[2]*normal[2];
-    
+
     if (abs(denom) > 0.0001) {
-        double diff[3] = { m_start[0]-0, m_start[1]-(groundHeight), m_start[2]-0 }; 
+        double diff[3] = { m_start[0]-0, m_start[1]-(groundHeight), m_start[2]-0 };
         double t = diff[0]*normal[0] + diff[1]*normal[1] + diff[2]*normal[2];
         t = -t/denom;
         groundInt[X] = m_start[X]+rayDir[X]*t;
@@ -569,11 +560,11 @@ bool rayGroundIntersect(void){
             printf("Hit ground at (%f,%f,%f), %f away\n", groundInt[X], groundInt[Y], groundInt[Z], t);
             return true;
         }
-        
+
     }
-    
+
     return false;
-    
+
 }
 
 //function for moving an object, dependent on the camera angle
@@ -740,151 +731,6 @@ void load(){
 
 }
 
-//function for keyboard commands
-void keyboard(unsigned char key, int xIn, int yIn){
-	int mod = glutGetModifiers();
-	Object o;
-	switch (key){
-		case 'q':	//quit
-		case 27:	//27 is the esc key
-			exit(0);
-			break;
-		case 'r':
-			angle = 0.0f;
-			Vangle = 0.0f;
-			sceneGraph.clear();
-			//Add empty model to be selected at start
-			selectedObject = &placeholder;
-			break;
-
-                /*
-               //camera zoom
-                case '.':
-                        camDist += 1;
-                        break;
-                case ',':
-                        camDist -= 1;
-                        break;
-                */
-		///movement controls - explained more in moveObject method
-		case 'w':	//move light forward
-			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, X, -1);
-			else
-                            moveObject(selectedObject,Z,-0.3);
-			break;
-		case 'W':
-			scaleObject(selectedObject, Z, 0.3);
-			break;
-		case 's':	//move light backwards
-			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, X, 1);
-			else
-                            moveObject(selectedObject,Z,0.3);
-			break;
-		case 'S':
-			scaleObject(selectedObject, Z, -0.3);
-			break;
-		case 'd':	//move light right
-			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, Z, -1);
-			else
-                            moveObject(selectedObject,X,0.3);
-			break;
-		case 'D':
-			scaleObject(selectedObject, X, 0.3);
-			break;
-		case 'a':	//move light left
-			if ( mod == GLUT_ACTIVE_ALT)
-                            rotateObject(selectedObject, Z, 1);
-			else
-                            moveObject(selectedObject,X,-0.3);
-			break;
-		case 'A':
-			scaleObject(selectedObject, X, -0.3);
-			break;
-                case 'z':
-                    if (mod == GLUT_ACTIVE_ALT)
-                        selectedObject->rotation[Y] -= 1;
-                    else
-                        selectedObject->position[Y] += 0.3;
-                    break;
-                case 'Z':
-                    selectedObject->scale[Y] += 0.3;
-                    break;
-                case 'x':
-                    if (mod == GLUT_ACTIVE_ALT)
-                        selectedObject->rotation[Y] += 1;
-                    else
-                        selectedObject->position[Y] -= 0.3;
-                    break;
-                case 'X':
-                    if (selectedObject->scale[Y] > 0.3)
-                        selectedObject->scale[Y] -= 0.3;
-                    break;
-
-                //Debug controls
-                case 'k':
-                    selectedObject->rayBoxIntersect();
-                    if(selectedObject->rayHit)
-                        printf("Dist to intersect:\n%f\n", selectedObject->getClosestDist());
-                    break;
-                case 'l':
-                    showBounding = !showBounding;
-                    break;
-                case 'm':
-                    selectedObject->materialType = selectedMaterial;
-                    break;
-
-                case '1':
-                    selectedMaterial = 0;
-                    break;
-                case '2':
-                    selectedMaterial = 1;
-                    break;
-                case '3':
-                    selectedMaterial = 2;
-                    break;
-                case '4':
-                    selectedMaterial = 3;
-                    break;
-                case '5':
-                    selectedMaterial = 4;
-                    break;
-								case 'y':
-										o = MakeObject(0);
-										sceneGraph.push_back(o);
-										selectedObject = &sceneGraph.back();
-										break;
-								case 'u':
-										o = MakeObject(1);
-										sceneGraph.push_back(o);
-										selectedObject = &sceneGraph.back();
-										break;
-								case 'i':
-										o = MakeObject(2);
-										sceneGraph.push_back(o);
-										selectedObject = &sceneGraph.back();
-										break;
-								case 'o':
-										o = MakeObject(3);
-										sceneGraph.push_back(o);
-										selectedObject = &sceneGraph.back();
-										break;
-								case 'p':
-										o = MakeObject(4);
-										sceneGraph.push_back(o);
-										selectedObject = &sceneGraph.back();
-										break;
-								case 'n':
-										load();
-										break;
-								case 'b':
-										save();
-										break;
-	}
-}
-
 //Raycasting - mostly class code
 //Move ray logic to separate file once sure about the inputs/outputs
 
@@ -946,14 +792,218 @@ void drawRay(){
     }
 }
 
+void rayTest(int x, int y){
+	rayCast(x, y);
+	rayGroundIntersect();
+	float closest = 1000000.0f;
+	for(list<Object>::const_iterator iterator = sceneGraph.begin(); iterator != sceneGraph.end(); iterator++){
+		Object* o = ((Object *) &(*iterator));
+		o->rayBoxIntersect();
+		o->getClosestDist();
+		if(o->rayHit){
+			if(o->closestDist<closest){
+				closest = o->closestDist;
+				selectedObject = o;
+			}
+		}
+	}
+	if(closest > 999999.0f){
+		selectedObject = &placeholder;
+	}
+}
+
+bool l0 = true;
+//function for keyboard commands
+void keyboard(unsigned char key, int xIn, int yIn){
+	int mod = glutGetModifiers();
+	Object o;
+	switch (key){
+		case 'q':	//quit
+		case 27:	//27 is the esc key
+			exit(0);
+			break;
+		case 'r':
+			angle = 0.0f;
+			Vangle = 0.0f;
+			sceneGraph.clear();
+			//Add empty model to be selected at start
+			selectedObject = &placeholder;
+			break;
+
+		///movement controls - explained more in moveObject method
+		case 'w':	//move light forward
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, X, -1);
+			else
+                            moveObject(selectedObject,Z,-0.3);
+			break;
+		case 'W':
+			scaleObject(selectedObject, Z, 0.3);
+			break;
+		case 's':	//move light backwards
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, X, 1);
+			else
+                            moveObject(selectedObject,Z,0.3);
+			break;
+		case 'S':
+			scaleObject(selectedObject, Z, -0.3);
+			break;
+		case 'd':	//move light right
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, Z, -1);
+			else
+                            moveObject(selectedObject,X,0.3);
+			break;
+		case 'D':
+			scaleObject(selectedObject, X, 0.3);
+			break;
+		case 'a':	//move light left
+			if ( mod == GLUT_ACTIVE_ALT)
+                            rotateObject(selectedObject, Z, 1);
+			else
+                            moveObject(selectedObject,X,-0.3);
+			break;
+		case 'A':
+			scaleObject(selectedObject, X, -0.3);
+			break;
+                case 'z':
+                    if (mod == GLUT_ACTIVE_ALT)
+                        selectedObject->rotation[Y] -= 1;
+                    else
+                        selectedObject->position[Y] += 0.3;
+                    break;
+                case 'Z':
+                    selectedObject->scale[Y] += 0.3;
+                    break;
+                case 'x':
+                    if (mod == GLUT_ACTIVE_ALT)
+                        selectedObject->rotation[Y] += 1;
+                    else
+                        selectedObject->position[Y] -= 0.3;
+                    break;
+                case 'X':
+                    if (selectedObject->scale[Y] > 0.3)
+                        selectedObject->scale[Y] -= 0.3;
+                    break;
+
+                //Debug controls
+                case 'i':
+                    selectedObject->rayBoxIntersect();
+                    if(selectedObject->rayHit)
+                        printf("Dist to intersect:\n%f\n", selectedObject->getClosestDist());
+                    break;
+                case 'o':
+                    showBounding = !showBounding;
+                    break;
+                case 'm':
+										rayTest(xIn,yIn);
+                    selectedObject->materialType = selectedMaterial;
+                    break;
+
+                case '1':
+                    selectedMaterial = 0;
+										cout<<"Material: Green\n";
+                    break;
+                case '2':
+                    selectedMaterial = 1;
+										cout<<"Material: Yellow\n";
+                    break;
+                case '3':
+                    selectedMaterial = 2;
+										cout<<"Material: White\n";
+                    break;
+                case '4':
+                    selectedMaterial = 3;
+										cout<<"Material: Blue\n";
+                    break;
+                case '5':
+                    selectedMaterial = 4;
+										cout<<"Material: Red\n";
+                    break;
+								case '6':
+										o = MakeObject(0);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case '7':
+										o = MakeObject(1);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case '8':
+										o = MakeObject(2);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case '9':
+										o = MakeObject(3);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case '0':
+										o = MakeObject(4);
+										sceneGraph.push_back(o);
+										selectedObject = &sceneGraph.back();
+										break;
+								case 'l':
+										load();
+										break;
+								case 'p':
+										save();
+										break;
+								case 'h':
+										if(l0)
+											l0pos[X] += 0.3;
+										else
+											l1pos[X] += 0.3;
+										break;
+								case 'b':
+										if(l0)
+											l0pos[X] -= 0.3;
+										else
+											l1pos[X] -= 0.3;
+										break;
+								case 'g':
+										if(l0)
+											l0pos[Y] += 0.3;
+										else
+											l1pos[Y] += 0.3;
+										break;
+								case 'j':
+										if(l0)
+											l0pos[Y] -= 0.3;
+										else
+											l1pos[Y] -= 0.3;
+										break;
+								case 'v':
+										if(l0)
+											l0pos[Z] -= 0.3;
+										else
+											l1pos[Z] -= 0.3;
+										break;
+								case 'n':
+										if(l0)
+											l0pos[Z] += 0.3;
+										else
+											l1pos[Z] += 0.3;
+										break;
+								case 'k':
+										l0 = !l0;
+										break;
+
+	}
+}
+
 void mouse(int btn, int state, int x, int y){
     if (btn == GLUT_LEFT_BUTTON){
-        if (state == GLUT_UP){
-        }
-
         if (state == GLUT_DOWN){
-            rayCast(x, y);
-            rayGroundIntersect();
+            rayTest(x,y);
+        }
+    }
+		if (btn == GLUT_LEFT_BUTTON){
+        if (state == GLUT_DOWN){
+            rayTest(x,y);
         }
     }
 }
@@ -1036,6 +1086,10 @@ void display(void){
 		glPushMatrix();
 			for(list<Object>::const_iterator iterator = sceneGraph.begin(); iterator != sceneGraph.end(); iterator++){
 				((Object) *iterator).draw();
+			}
+			if(selectedObject!= &placeholder){
+				selectedObject->applyTransforms();
+				selectedObject->drawBox();
 			}
 		glPopMatrix();
 
