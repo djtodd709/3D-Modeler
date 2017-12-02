@@ -159,8 +159,8 @@ struct Object{
 		matrixMultiplyRay(invModelView, m_start, lm_start);
 		matrixMultiplyRay(invModelView, m_end, lm_end);
 		//Debug
-		printf("Local ray\n");
-		printf("(%f,%f,%f)-->(%f,%f,%f)\n\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
+		//printf("Local ray\n");
+		//printf("(%f,%f,%f)-->(%f,%f,%f)\n\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
 	}
 
 	//Undo the transformation - this is just for checking right now
@@ -169,8 +169,8 @@ struct Object{
 		//Local ray => World ray
 		matrixMultiplyRay(matModelView, lm_start, m_start);
 		matrixMultiplyRay(matModelView, lm_end, m_end);
-		printf("Local ray\n");
-		printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
+		//printf("Local ray\n");
+		//printf("(%f,%f,%f)-->(%f,%f,%f)\n", lm_start[0], lm_start[1], lm_start[2], lm_end[0], lm_end[1], lm_end[2]);
 	}
 
 	double getClosestDist(){
@@ -196,8 +196,8 @@ struct Object{
 			double rayMag = sqrt(rayDir[0]*rayDir[0]+rayDir[1]*rayDir[1]+rayDir[2]*rayDir[2]);
 			rayDir[0] = rayDir[0]/rayMag; rayDir[1] = rayDir[1]/rayMag; rayDir[2] = rayDir[2]/rayMag;
 
-			printf("Ray Vector\n");
-			printf("(%f,%f,%f)\n", rayDir[0], rayDir[1], rayDir[2]);
+			//printf("Ray Vector\n");
+			//printf("(%f,%f,%f)\n", rayDir[0], rayDir[1], rayDir[2]);
 
 			double t1, t2;
 			double tmin = -INFINITY, tmax = INFINITY;
@@ -225,7 +225,7 @@ struct Object{
 				return false;
 			}
 
-			printf ("Intersection!\n");
+			//printf ("Intersection!\n");
 			rayHit = true;
 			localintersect1[X] = lm_start[X]+rayDir[X]*tmin;
 			localintersect1[Y] = lm_start[Y]+rayDir[Y]*tmin;
@@ -510,10 +510,12 @@ struct Object{
 		selectedObject = &placeholder;
 
 		//print instructions
-		printf("3D Modeler\n");
+		printf("\n\n3D Modeler\n");
+		printf("Dave Todd (400163125) and Vlad Falach (001055375)\n\n");
 		printf("-----------Instructions----------\n");
 		printf("Q/Esc - Quit\n");
 		printf("Left Click - Select an Object\n");
+		printf("Right Click - Delete an Object\n");
 		printf("Arrow - Turn (left/right) or tilt (up/down) scene\n");
 		printf("WSADZX - Move the object forward/back/left/right/up/down\n");
 		printf("ALT+WASDZX - Rotate the object forward/back/left/right/up/down\n");
@@ -524,9 +526,9 @@ struct Object{
 		printf("P/L - Save/Load\n");
 		printf("HBVNGJ - Move light forward/back/left/right/up/down\n");
 		printf("K - Switch light\n");
-		printf("-----------Debug-----------------\n");
-		printf("i - enable object bounding boxes, yellow is relative to center of object\n");
-		printf("o - recalculate ray relative to the box\n");
+		//printf("-----------Debug-----------------\n");
+		//printf("i - enable object bounding boxes, yellow is relative to center of object\n");
+		//printf("o - recalculate ray relative to the box\n");
 		printf("---------------------------------\n");
 
 	}
@@ -557,7 +559,7 @@ struct Object{
 			if(groundInt[X] > -groundSize && groundInt[X] < groundSize && groundInt[Z] > -groundSize && groundInt[Z] < groundSize){
 				groundHit = true;
 				distToGround = t;
-				printf("Hit ground at (%f,%f,%f), %f away\n", groundInt[X], groundInt[Y], groundInt[Z], t);
+				//printf("Hit ground at (%f,%f,%f), %f away\n", groundInt[X], groundInt[Y], groundInt[Z], t);
 				return true;
 			}
 
@@ -759,9 +761,9 @@ struct Object{
 	//Move ray logic to separate file once sure about the inputs/outputs
 
 	void rayCast(int x, int y){
-		printf("Projecting\n");
+		//printf("Projecting\n");
 
-		printf("(%f,%f,%f)-->(%f,%f,%f)\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
+		//printf("(%f,%f,%f)-->(%f,%f,%f)\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
 		double matModelView[16], matProjection[16];
 		int viewport[4];
 
@@ -783,7 +785,7 @@ struct Object{
 				viewport, &m_end[0], &m_end[1], &m_end[2]);
 
 				// now you can create a ray from m_start to m_end
-				printf("(%f,%f,%f)-->(%f,%f,%f)\n\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
+				//printf("(%f,%f,%f)-->(%f,%f,%f)\n\n", m_start[0], m_start[1], m_start[2], m_end[0], m_end[1], m_end[2]);
 
 			}
 
@@ -917,7 +919,7 @@ struct Object{
 					case 'i':
 					selectedObject->rayBoxIntersect();
 					if(selectedObject->rayHit)
-					printf("Dist to intersect:\n%f\n", selectedObject->getClosestDist());
+					//printf("Dist to intersect:\n%f\n", selectedObject->getClosestDist());
 					break;
 					case 'o':
 					showBounding = !showBounding;
